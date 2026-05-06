@@ -11,7 +11,7 @@ ShyftR gives agents memory that can prove where it came from, whether it helped,
 
 ## Current status
 
-ShyftR is in local-first alpha / controlled-pilot developer preview. 
+ShyftR is in local-first alpha / controlled-pilot developer preview.
 See `docs/status/current-implementation-status.md` for the evidence-backed capability matrix.
 
 ## What ShyftR does
@@ -26,7 +26,7 @@ ShyftR is a local memory-cell substrate for agents and agent runtimes:
 | pack | the regulator assembles a bounded, trust-labeled context bundle for a runtime |
 | feedback | the runtime reports whether the pack helped, harmed, or missed something |
 | confidence | useful memory can gain confidence; harmful, stale, or contradictory memory can be challenged |
-| pattern and rule | recurring memories can be distilled into higher-order guidance under review gates | 
+| pattern and rule | recurring memories can be distilled into higher-order guidance under review gates |
 
 The result is agent memory that stays inspectable. Durable learning remains tied to evidence, review, provenance, and feedback instead of disappearing into opaque profile state.
 
