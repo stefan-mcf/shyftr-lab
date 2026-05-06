@@ -13,8 +13,6 @@ ShyftR gives agents memory that can prove where it came from, whether it helped,
 
 ShyftR is a local-first alpha / controlled-pilot developer preview. The supported public path is to clone the repository, install it in a Python 3.11+ environment, run synthetic local examples, inspect the ledgers, and run the alpha gate before using any operator-approved pilot data.
 
-Current alpha boundary: not a hosted SaaS product, not a multi-tenant production service, not production-hardened, and not a package release. Hosted operation, multi-tenant deployment, broad external memory-provider replacement, public benchmark claims, and large-scale multi-cell intelligence require separate implementation evidence and review before public claims expand.
-
 See `docs/status/current-implementation-status.md` for the evidence-backed capability matrix.
 
 ## What ShyftR does
