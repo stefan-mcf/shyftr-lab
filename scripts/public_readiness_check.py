@@ -121,8 +121,13 @@ def main() -> int:
     for banned_public_planning_term in ["phase", "roadmap"]:
         if banned_public_planning_term in low:
             fail(errors, f"README contains internal planning term: {banned_public_planning_term}")
-    if "not a hosted saas" not in low or "not a multi-tenant production service" not in low:
-        fail(errors, "README missing non-hosted/non-production boundary")
+    # README is the public landing page, so do not force clunky negative phrasing there.
+    # Treat the current public README wording as canonical: alpha status, explicit out-of-scope
+    # hosted/multi-tenant items, and the alpha gate verdict are the required public markers.
+    if "what is deliberately out of scope" not in low:
+        fail(errors, "README missing explicit out-of-scope section")
+    if "hosted platform operation" not in low or "multi-tenant production deployment" not in low:
+        fail(errors, "README missing hosted/multi-tenant out-of-scope boundary")
     if "ALPHA_GATE_READY" not in readme:
         fail(errors, "README missing alpha gate expected verdict")
 
