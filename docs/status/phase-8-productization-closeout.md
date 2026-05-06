@@ -54,13 +54,12 @@ Final local human-gate evidence is recorded in `docs/status/phase-8-final-human-
 
 Decision: Phase 8 local final human gate is accepted, with the stop point preserved before Phase 9, Checkpoint E, Checkpoint F, stable-release wording, and public validation claims.
 
-## External evidence gate
+## Operator continuation gate
 
-External alpha evidence remains open and is not fabricated.
+Operator gate policy is recorded and active.
 
-Current tracker state checked during closeout:
+Current gate state checked during closeout:
 
-- issue: https://github.com/stefan-mcf/shyftr/issues/1
 - phase progression is operator-gated;
 - public feedback is advisory and can use normal GitHub issues.
 

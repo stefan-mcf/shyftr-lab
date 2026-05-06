@@ -20,11 +20,11 @@ ShyftR proves local-first memory cells, append-only ledger truth, review-gated m
 2. Closeout artifact adapter for public-safe task/domain handoffs.
 3. Generic adapter ingestion into local evidence ledgers.
 4. Retrieval usage log contract for local generic clients.
-5. External integration evidence gate before Phase 10.
+5. Operator gate before Phase 10.
 
 Status record: `docs/status/phase-9-integration-adapters-closeout.md`.
 
-## External evidence gate
+## Operator release-scope gate
 
 Before alpha-exit or stable-release wording, ShyftR needs a separate operator gate with exact-SHA CI, local verification, release-scope review, and documented acceptance.
 
