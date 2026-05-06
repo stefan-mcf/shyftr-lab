@@ -364,6 +364,7 @@ Governance:
 
 - `CONTRIBUTING.md` — contribution workflow.
 - `SECURITY.md` — security and sensitive-data guidance.
+- `docs/review-policy.md` — memory safety, provenance, and review gate requirements.
 - `CHANGELOG.md` — public change history.
 - `LICENSE` — MIT license.
 

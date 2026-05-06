@@ -2,7 +2,7 @@
 
 ShyftR is currently a controlled-pilot, local-first MVP. Contributions should preserve append-only cell truth, review gates, and public-surface hygiene.
 
-## Local setup
+## local setup
 
 ```bash
 python3.11 -m venv .venv
@@ -23,10 +23,25 @@ npm run build
 npm audit --omit=dev
 ```
 
-## Pull request expectations
+## pull request expectations
 
-- Keep examples synthetic and free of secrets/private data.
-- Add or update tests for behavior changes.
-- Update docs when CLI/API/console behavior changes.
-- Do not expand distributed multi-cell intelligence without a prior issue/plan.
-- Preserve local-first behavior; no hidden cloud or external-service dependency in default tests.
+- Keep examples synthetic and free of secrets or private data.
+- Add or update tests for behavior changes, including regulator and policy changes covered by `docs/review-policy.md`.
+- Update docs, migration notes, and `CHANGELOG.md` when CLI, API, console behavior, schema, or ledger format changes.
+- Preserve provenance on every memory write path. Do not strip, rewrite, or fabricate provenance fields.
+- Preserve local-first behavior; default tests must not require hidden cloud or external-service dependencies.
+- Keep public claims tied to implemented and verified behavior.
+- Preserve current ShyftR vocabulary in public docs and user-facing surfaces.
+
+## schema migration notes
+
+When a pull request changes SQLite schema, ledger format, JSONL event fields, or migration helpers, include:
+
+- before and after shape;
+- the migration step added, if any;
+- whether existing local cells open without data loss or manual migration;
+- compatibility behavior for older ledgers when relevant.
+
+## review policy
+
+All contributions must follow `docs/review-policy.md`. Memory safety, provenance preservation, local-first defaults, terminology hygiene, and review gates are required for merge readiness.

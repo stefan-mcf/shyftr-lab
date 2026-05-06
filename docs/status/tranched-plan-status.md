@@ -30,6 +30,8 @@ Current status:
 | Phase 7.8 regulated autonomous memory evolution | implemented as public-safe foundation | `src/shyftr/evolution.py`, CLI/API/console surfaces, synthetic tests, and `docs/status/phase-7.8-public-private-split.md` | stop before Phase 8 productization unless explicitly approved |
 | Phase 8 productization | implemented locally and operator-accepted | adapter SDK/template/harness, `/v1` API aliases and OpenAPI contract, desktop shell start gate, and `docs/status/phase-8-productization-closeout.md` | closed by final local human gate |
 | Phase 9 integration adapters | implemented locally; Phase 10 local gate opened by operator review | generic evidence adapters, closeout artifact adapter, generic SourceAdapter ingestion, retrieval usage log contract, research/plan/closeout status artifacts, `docs/status/phase-10-operator-gate.md` | proceed within Phase 10 local implementation scope |
+| Phase 10 local evaluation metrics | implemented locally in working tree | deterministic metrics, transparent decay scoring, CLI/API/console surfaces, demo artifacts, and `docs/status/phase-10-local-evaluation-closeout.md` | commit with release-discipline closeout after final gates |
+| Phase 11 release/operating discipline | in progress locally | CI exists and is being hardened; contribution/review policy surfaces and planning tag handling are in scope | close Phase 11 only; do not start further phase work |
 
 ## Current larger-run start point
 
@@ -134,6 +136,6 @@ Persistent swarm profiles are not required unless the run becomes long-lived or 
 
 ## Ready-to-run verdict
 
-Ready for current larger phased run: yes, through Phase 10 local implementation scope after operator gate opening recorded in `docs/status/phase-10-operator-gate.md`.
+Ready for current larger phased run: yes, through Phase 11 release/operating discipline after operator instruction. Phase 11 remains bounded to CI, contribution/review policy, planning-baseline tag handling, and closeout evidence.
 
-Not ready for: Checkpoint E, Checkpoint F, hosted/production/stable-release posture, or private-core-heavy work without separate operator approval.
+Not ready for: Checkpoint E, Checkpoint F, hosted/production/stable-release posture, private-core-heavy work, or any further phase work without separate operator approval.
