@@ -21,13 +21,13 @@ cat > "$env_file" <<JSON
 JSON
 
 set +e
-bash scripts/alpha_gate.sh 2>&1 | tee "$gate_log"
+bash scripts/release_gate.sh 2>&1 | tee "$gate_log"
 code=${PIPESTATUS[0]}
 set -e
 
 echo
 echo "Environment capture: $env_file"
-echo "Alpha gate log: $gate_log"
+echo "Release gate log: $gate_log"
 echo "Exit code: $code"
 echo
 echo "Open a report with: https://github.com/stefan-mcf/shyftr/issues/new?template=alpha_test_report.yml"

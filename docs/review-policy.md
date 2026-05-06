@@ -52,10 +52,10 @@ git diff --check
 For release-scope or status changes, also run:
 
 ```bash
-bash scripts/alpha_gate.sh
+bash scripts/release_gate.sh
 ```
 
-GitHub Actions should stay aligned with the local proof bundle where practical, while `scripts/alpha_gate.sh` remains the operator-local full bundle.
+GitHub Actions should stay aligned with the local proof bundle where practical, while `scripts/release_gate.sh` remains the operator-local full bundle.
 
 ## review expectations
 

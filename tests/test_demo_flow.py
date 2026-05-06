@@ -66,7 +66,7 @@ def test_phase10_demo_files_exist_and_are_parseable() -> None:
     assert closeout.is_file(), f"Missing: {closeout}"
     assert "shyftr metrics" in closeout.read_text(encoding="utf-8")
     packet_data = json.loads(packet.read_text(encoding="utf-8"))
-    assert packet_data["scope"] == "local controlled-pilot demo only"
+    assert packet_data["scope"] == "local reviewed demo only"
     assert "shyftr metrics" in demo.read_text(encoding="utf-8")
     assert "shyftr decay" in demo.read_text(encoding="utf-8")
 

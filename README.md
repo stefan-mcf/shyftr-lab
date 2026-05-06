@@ -3,7 +3,7 @@
 [![CI](https://github.com/stefan-mcf/shyftr/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/stefan-mcf/shyftr/actions/workflows/ci.yml)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
-![Status: alpha](https://img.shields.io/badge/status-local--first%20alpha-orange)
+![Status: stable local](https://img.shields.io/badge/status-stable%20local--first-green)
 
 Attachable recursive memory cells for AI agents.
 
@@ -11,8 +11,9 @@ ShyftR gives agents memory that can prove where it came from, whether it helped,
 
 ## Current status
 
-ShyftR is in local-first alpha / controlled-pilot developer preview.
-See `docs/status/current-implementation-status.md` for the evidence-backed capability matrix.
+ShyftR is a stable local-first product line for developer-operated agent memory. The supported path is clone, install, run local cells, and use synthetic or operator-approved non-sensitive data. Hosted platform operation, multi-tenant deployment, package publication, and broad managed-memory replacement claims remain outside the current public release.
+
+See `docs/status/current-implementation-status.md` for the evidence-backed capability matrix and `docs/status/release-readiness.md` for the release gate.
 
 ## What ShyftR does
 
@@ -73,7 +74,7 @@ Cells let different scopes learn without collapsing everything into one global p
 
 ## What works today
 
-The public alpha currently supports:
+The public release supports:
 
 - local cell creation and append-only ledgers;
 - evidence ingestion, candidate extraction, review, and memory promotion;
@@ -82,25 +83,25 @@ The public alpha currently supports:
 - privacy/sensitivity policy checks for pack and provider paths;
 - local diagnostics, readiness, hygiene, audit, sweep, challenge, proposal, backup, restore, and ledger verification workflows;
 - optional localhost FastAPI service;
-- React console developer preview backed by the local service;
+- React console for local service operation;
 - runtime-neutral adapter examples and synthetic fixtures;
-- public readiness and alpha gate scripts.
+- public readiness and release gate scripts.
 
-The public alpha uses synthetic examples by default. Use operator-approved non-sensitive data only after reviewing `SECURITY.md` and `docs/status/alpha-readiness.md`.
+The public release uses synthetic examples by default. Use operator-approved non-sensitive data only after reviewing `SECURITY.md` and `docs/status/release-readiness.md`.
 
 ## What is deliberately out of scope
 
 The current public release excludes:
 
 - hosted platform operation;
-- multi-tenant production deployment;
-- package publishing or release tags without a separate release decision;
+- multi-tenant deployment;
+- package publication or release tags without a separate release decision;
 - broad managed memory backend replacement claims;
 - benchmark claims without published methodology and reproducible scripts;
 - automatic external runtime control beyond local adapter contracts;
 - unreviewed sensitive, customer, employer, or regulated memory.
 
-Future capabilities can expand after implementation evidence, tests, public status updates, and review gates. Until then, treat this repository as a local-first alpha proof surface.
+Future capabilities can expand after implementation evidence, tests, public status updates, and review gates. Treat this repository as the stable local-first proof and operating surface for ShyftR cells.
 
 ## Install from clone
 
@@ -120,21 +121,21 @@ Requirements:
 - Node 20+ only if you want to build the optional console.
 - No hosted account or external service is required for the local proof path.
 
-## Alpha gate
+## Release readiness gate
 
-Before asking others to test a clone, run the public alpha gate:
+Before asking others to depend on a clone, run the public release gate:
 
 ```bash
-bash scripts/alpha_gate.sh
+bash scripts/release_gate.sh
 ```
 
 Expected final line:
 
 ```text
-ALPHA_GATE_READY
+SHYFTR_RELEASE_READY
 ```
 
-The gate uses synthetic data only. It checks CLI import/help, Python tests, deterministic local lifecycle, synthetic replacement-readiness replay, diagnostics, public readiness posture, and optional console build/audit when npm is available.
+The gate uses synthetic data by default. It checks CLI import/help, Python tests, deterministic local lifecycle, synthetic replacement-readiness replay, diagnostics, public readiness posture, and optional console build/audit when npm is available.
 
 If the gate fails on a machine, capture the full terminal output, OS, Python version, Node/npm version if relevant, and whether the failure happened before or after dependency installation.
 
@@ -147,17 +148,6 @@ bash examples/run-local-lifecycle.sh
 ```
 
 The script creates a temporary cell, ingests `examples/evidence.md`, extracts a candidate, reviews it, promotes a memory, assembles a pack, records feedback, runs local diagnostics, verifies ledger heads, and creates a local backup.
-
-### What the demo proves
-
-The local lifecycle demonstrates the complete learning loop with synthetic data:
-
-1. evidence enters an append-only ledger;
-2. a candidate is extracted from that evidence;
-3. review happens before durable memory promotion;
-4. a pack supplies bounded context for a task;
-5. feedback records whether the pack was useful;
-6. diagnostics, ledger verification, and backup make the cell inspectable.
 
 ### Manual CLI path
 
@@ -173,37 +163,19 @@ shyftr pack /tmp/shyftr-demo-cell "pack relevance" --task-id demo-task
 shyftr feedback /tmp/shyftr-demo-cell <pack_id> success --useful <memory_id>
 ```
 
-Use throwaway cells for experiments. Do not point alpha tests at production memory ledgers.
+Use throwaway cells for experiments. Do not point tests at production memory ledgers.
 
-## Example lifecycle
+## Safety model
 
-A typical agent-memory loop looks like this:
+- cell ledgers are canonical truth.
+- The regulator controls admission, promotion, retrieval, mutation, sensitivity, and export.
+- The grid is rebuildable acceleration.
+- Packs are bounded context bundles for a task/runtime.
+- feedback drives confidence and review-gated proposals.
+- Sensitive or regulated data requires explicit operator approval before use.
+- Hosted or multi-tenant deployments require a separate deployment and security review.
 
-```text
-First run:
-  agent or runtime -> evidence -> append-only cell ledger
-
-Review:
-  evidence -> candidate -> approved memory
-
-Next run:
-  task query -> regulator -> trust-labeled pack -> agent or runtime
-
-Closeout:
-  result -> feedback -> confidence update -> review-gated proposals
-```
-
-Durable promotion and runtime application are separate loops:
-
-```text
-Durable lifecycle:
-evidence -> candidate -> memory -> pattern -> rule
-
-Application loop:
-pack -> feedback -> confidence
-```
-
-Pattern and rule distillation are future-facing unless the README cites narrow tested local behavior. The alpha's reliable public claim is local evidence capture, review-gated memory promotion, pack generation, feedback recording, and inspectable ledger-backed operation.
+See `SECURITY.md`, `docs/status/release-readiness.md`, and `docs/concepts/storage-retrieval-learning.md` for the detailed release scope.
 
 ## Architecture
 
@@ -218,205 +190,35 @@ agent or runtime
 | append-only ledger is truth                                |
 | regulator gates admission, review, retrieval, and export   |
 | grid indexes are rebuildable acceleration                  |
-| reviewed memory, patterns, and rules carry provenance      |
+| reviewed memories retain provenance back to evidence       |
 +------------------------------------------------------------+
       |
       v
-trust-labeled pack -> agent run -> feedback -> confidence
+   pack -> runtime use -> feedback -> confidence/proposals
 ```
-
-### Trust tiers in a pack
-
-| Tier | Meaning | How to treat it |
-|---|---|---|
-| rule | highest-confidence shared guidance after explicit review | apply when in scope |
-| memory | reviewed durable memory with provenance | use as primary guidance or caution |
-| pattern | recurring structure distilled from related memories | treat as emerging guidance unless fully promoted |
-| candidate | proposed memory awaiting review | background only unless approved |
-| evidence | raw source material | inspect for provenance, never treat as durable authority |
-
-### Pack roles
-
-A pack separates memory by role so a runtime can use guidance without losing warnings:
-
-- `guidance_items` — action-oriented memories, rules, or patterns;
-- `caution_items` — failure signatures, anti-patterns, supersession warnings, or other negative-space memory;
-- `background_items` — supporting patterns, candidates, or evidence for interpretation;
-- `conflict_items` — contradictory material requiring review before confident use.
-
-Every pack item carries trust tier, kind, confidence, score, and provenance where available.
-
-### Regulator responsibilities
-
-The regulator is the operational policy surface around a cell. It controls:
-
-- admission checks before evidence can support learning;
-- candidate review before memory promotion;
-- sensitivity and policy filtering;
-- trust-tier, token, scope, and export limits for packs;
-- proposal review before higher-authority memory changes;
-- quarantine or challenge paths for harmful, stale, or conflicting material.
-
-The regulator keeps automated discovery separate from durable authority.
-
-## Runtime integration
-
-ShyftR attaches to external runtimes through four runtime-neutral flows:
-
-```text
-external runtime -> evidence  -> ShyftR cell
-external runtime <- pack      <- ShyftR cell
-external runtime -> feedback  -> ShyftR cell
-external runtime <- proposals <- ShyftR cell
-```
-
-External runtimes own scheduling, execution, retries, model choice, queue state, and immediate operational policy. ShyftR owns durable memory, provenance, regulator gates, packs, feedback, confidence, and advisory proposals.
-
-The file/JSONL adapter examples under `examples/integrations/worker-runtime/` show the contract without depending on a specific framework or hosted service. See `docs/concepts/runtime-integration-contract.md` and `docs/runtime-integration-example.md` for the detailed request and response shapes.
-
-## Safety model
-
-ShyftR's safety model is local-first, append-only, review-gated, and explicit about what writes durable truth.
-
-### Safety, privacy, and trust boundaries
-
-- Use synthetic examples by default.
-- Use operator-approved non-sensitive pilot data only after reviewing `SECURITY.md`.
-- Keep API keys, tokens, `.env` files, customer data, employer data, regulated data, and production memory ledgers out of alpha tests.
-- cell ledgers are canonical truth.
-- grid indexes, profile projections, API summaries, console views, and readiness reports are rebuildable projections or local append-only writers.
-- Review gates control durable memory promotion.
-- The regulator controls retrieval and export decisions.
-- ShyftR does not silently rewrite durable memory.
-- Hosted SaaS and multi-tenant production guarantees sit outside the current public alpha.
-
-### What writes truth
-
-Durable truth is written by local cell ledger operations:
-
-- `shyftr ingest` writes evidence records;
-- `shyftr approve` and `shyftr reject` write review records;
-- `shyftr memory` / `shyftr promote` write promotion and memory records;
-- `shyftr pack` writes bounded pack/retrieval records derived from existing ledgers;
-- `shyftr feedback` writes feedback records;
-- the optional local service delegates to the same local functions;
-- the console is a local UI over the same lifecycle boundaries.
-
-### What stays projection
-
-These surfaces help retrieval, inspection, or UX, but they can be rebuilt or regenerated from ledgers:
-
-- grid indexes;
-- profile summaries;
-- readiness and diagnostics reports;
-- API response summaries;
-- console views;
-- exported proposal files and backup archives.
-
-See `SECURITY.md`, `docs/status/alpha-readiness.md`, and `docs/concepts/storage-retrieval-learning.md` for the detailed alpha boundary.
-
-## Local service and console
-
-The optional service is a localhost wrapper around the same local cell functions:
-
-```bash
-shyftr serve --host 127.0.0.1 --port 8014
-curl -fsS http://127.0.0.1:8014/health
-```
-
-Console developer preview:
-
-```bash
-cd apps/console
-cp .env.example .env
-npm install
-npm run dev
-npm run build
-```
-
-See `docs/api.md` and `docs/console.md` for current endpoints, UI capabilities, and localhost boundaries.
 
 ## Documentation
 
-Start here:
-
-- `docs/status/current-implementation-status.md` — evidence-backed capability matrix and public wording rule.
-- `docs/sdk/adapter-sdk.md` — adapter guide, template, and harness.
-- `docs/api-versioning.md` — v1 local HTTP API namespace and OpenAPI contract.
-- `docs/status/alpha-readiness.md` — tester audience, alpha gate, and data boundaries.
-- `docs/example-lifecycle.md` — CLI lifecycle walkthrough.
-- `examples/README.md` — synthetic examples and lifecycle script.
-
-Concepts:
-
-- `docs/concepts/cells.md` — cell, regulator, ledger, grid, pack, and feedback concepts.
-- `docs/concepts/storage-retrieval-learning.md` — storage truth, trust tiers, pack roles, and confidence loop.
-- `docs/concepts/terminology-compatibility.md` — canonical vocabulary and legacy alias policy.
-- `docs/concepts/runtime-integration-contract.md` — runtime-neutral adapter contract.
-
-Reference:
-
-- `docs/api.md` — localhost service endpoints.
-- `docs/console.md` — React console setup and boundaries.
-- `docs/development.md` — setup, tests, and local verification.
-
-Governance:
-
-- `CONTRIBUTING.md` — contribution workflow.
-- `SECURITY.md` — security and sensitive-data guidance.
-- `docs/review-policy.md` — memory safety, provenance, and review gate requirements.
-- `CHANGELOG.md` — public change history.
-- `LICENSE` — MIT license.
-
-Planning and source material:
-
-- `docs/plans/` — implementation planning notes.
-- `docs/sources/` — source material and decision captures.
-- `docs/feeds/` — historical research or review feeds.
-- `docs/runbooks/` — operational notes.
-
-Treat planning, source, feed, and runbook files as historical or planning material unless a status document marks a capability current.
+- `docs/status/current-implementation-status.md` — implemented capability matrix.
+- `docs/status/release-readiness.md` — supported audience, release gate, and data boundaries.
+- `docs/status/public-readiness-audit.md` — public-repository readiness evidence.
+- `docs/development.md` — local development and verification commands.
+- `docs/api.md` — optional local HTTP API reference.
+- `docs/console.md` — local console guide.
+- `docs/concepts/storage-retrieval-learning.md` — ledger/grid/pack/feedback model.
+- `docs/runtime-integration-example.md` — runtime-neutral adapter example.
+- `examples/README.md` — runnable synthetic examples.
 
 ## Development checks
 
-Run the full local verification bundle before trusting or publishing changes:
-
 ```bash
 python -m pytest -q
-bash examples/run-local-lifecycle.sh
 python scripts/terminology_inventory.py --fail-on-public-stale
 python scripts/terminology_inventory.py --fail-on-capitalized-prose
 python scripts/public_readiness_check.py
-bash scripts/check.sh
-bash scripts/alpha_gate.sh
 git diff --check
+bash scripts/release_gate.sh
 ```
-
-Optional console verification when Node/npm are available:
-
-```bash
-(cd apps/console && npm install && npm run build && npm audit --omit=dev)
-```
-
-For a clean install smoke:
-
-```bash
-bash scripts/smoke-install.sh
-```
-
-## Project status and future direction
-
-The public repository proves local-first memory cells, append-only ledgers, review-gated memory promotion, pack generation, feedback recording, local service/console developer preview, and synthetic runtime-integration examples.
-
-Broader adoption paths remain gated by implementation evidence, tests, status updates, and review. Future-facing work includes stronger pattern/rule distillation, larger-cell retrieval adapters, richer proposal review, and more complete external runtime integration patterns. Keep current-tense public claims tied to `docs/status/current-implementation-status.md`.
-
-## Contributing
-
-Contributions should preserve the alpha boundary, local-first behavior, synthetic test data, public/private separation, and terminology rules. Start with `CONTRIBUTING.md` and `docs/development.md`.
-
-## Security
-
-Report vulnerabilities and sensitive-data concerns through the process in `SECURITY.md`. Do not include secrets, customer data, private ledgers, or production memory in issues, examples, screenshots, or test fixtures.
 
 ## License
 

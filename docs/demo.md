@@ -65,5 +65,5 @@ PYTHONPATH=src python -m shyftr.cli decay "$CELL"
 
 ## Scope boundary
 
-The metrics are local controlled-pilot evidence. They are not alpha-exit,
+The metrics are local release evidence. They are not alpha-exit,
 stable-release, hosted-service, production, or package-release claims.

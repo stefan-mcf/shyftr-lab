@@ -171,7 +171,7 @@ def test_cell_health_combines_confidence_quality_and_decay(tmp_path: Path) -> No
     assert health["memory_count"] == 1
     assert health["average_confidence"] == 0.9
     assert 0.0 < health["health_score"] <= 1.0
-    assert health["posture"] == "local controlled-pilot metric; review-gated and append-only"
+    assert health["posture"] == "local release metric; review-gated and append-only"
 
 
 def test_metrics_and_decay_cli_commands_return_json(tmp_path: Path) -> None:

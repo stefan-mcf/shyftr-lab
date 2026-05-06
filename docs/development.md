@@ -35,10 +35,10 @@ bash examples/run-local-lifecycle.sh
 python scripts/public_readiness_check.py
 bash scripts/check.sh
 bash scripts/smoke-install.sh
-bash scripts/alpha_gate.sh
+bash scripts/release_gate.sh
 ```
 
-Use `scripts/alpha_gate.sh` before operator release-scope review. It uses synthetic data only and should end with `ALPHA_GATE_READY`. See `docs/status/alpha-readiness.md` for scope and data boundaries.
+Use `scripts/release_gate.sh` before operator release-scope review. It uses synthetic data only and should end with `SHYFTR_RELEASE_READY`. See `docs/status/release-readiness.md` for scope and data boundaries.
 
 ## Optional dependency notes
 

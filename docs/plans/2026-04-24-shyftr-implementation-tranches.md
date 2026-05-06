@@ -1,5 +1,12 @@
 # ShyftR Fully Tranched Implementation Plan
 
+
+## Completion status
+
+Status: complete through final Checkpoint F. Operator-approved closeout artifacts: `docs/status/phase-12-checkpoint-e-readiness-closeout.md`, `docs/status/phase-13-checkpoint-e-decision.md`, and `docs/status/phase-14-checkpoint-f-closeout.md`. Future work after Checkpoint F requires a new plan.
+
+---
+
 ## Strategic Product Definition
 
 ShyftR should become the default modular memory substrate for agents.

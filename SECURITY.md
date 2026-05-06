@@ -2,7 +2,7 @@
 
 ## Status
 
-ShyftR is a controlled-pilot, local-first developer-preview project. It is not a hosted service and does not claim multi-tenant production hardening.
+ShyftR is a stable local-first project. It is not a hosted service and does not claim multi-tenant production hardening.
 
 ## Reporting
 

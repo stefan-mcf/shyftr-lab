@@ -20,13 +20,14 @@ REQUIRED_FILES = [
     "LICENSE",
     "pyproject.toml",
     "docs/status/current-implementation-status.md",
-    "docs/status/alpha-readiness.md",
+    "docs/status/release-readiness.md",
     "docs/status/public-readiness-audit.md",
     "docs/development.md",
     "docs/api.md",
     "docs/console.md",
     "examples/README.md",
     "examples/run-local-lifecycle.sh",
+    "scripts/release_gate.sh",
     "scripts/alpha_gate.sh",
     "CONTRIBUTING.md",
     "SECURITY.md",
@@ -36,7 +37,7 @@ REQUIRED_FILES = [
 README_SECTIONS = [
     "Current status",
     "Install from clone",
-    "Alpha gate",
+    "Release readiness gate",
     "Quickstart",
     "Safety model",
     "Architecture",
@@ -47,6 +48,9 @@ README_SECTIONS = [
 BANNED_README = [
     "production-ready",
     "enterprise-grade",
+    "ALPHA_GATE_READY",
+    "controlled-pilot",
+    "developer preview",
 ]
 PRIVATE_PATTERNS = [
     re.compile(r"/(Users|home)/[^\s`)\]}>\"']+"),
@@ -114,33 +118,30 @@ def main() -> int:
         if section.lower() not in low:
             fail(errors, f"README missing section: {section}")
     for banned in BANNED_README:
-        if banned in low:
+        if banned.lower() in low:
             fail(errors, f"README contains banned phrase: {banned}")
-    if "alpha" not in low:
-        fail(errors, "README missing alpha status boundary")
+    if "stable local-first" not in low:
+        fail(errors, "README missing stable local-first release posture")
     for banned_public_planning_term in ["phase", "roadmap"]:
         if banned_public_planning_term in low:
             fail(errors, f"README contains internal planning term: {banned_public_planning_term}")
-    # README is the public landing page, so do not force clunky negative phrasing there.
-    # Treat the current public README wording as canonical: alpha status, explicit out-of-scope
-    # hosted/multi-tenant items, and the alpha gate verdict are the required public markers.
     if "what is deliberately out of scope" not in low:
         fail(errors, "README missing explicit out-of-scope section")
-    if "hosted platform operation" not in low or "multi-tenant production deployment" not in low:
+    if "hosted platform operation" not in low or "multi-tenant deployment" not in low:
         fail(errors, "README missing hosted/multi-tenant out-of-scope boundary")
-    if "ALPHA_GATE_READY" not in readme:
-        fail(errors, "README missing alpha gate expected verdict")
+    if "SHYFTR_RELEASE_READY" not in readme:
+        fail(errors, "README missing release gate expected verdict")
 
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    if "Development Status :: 3 - Alpha" not in pyproject:
-        fail(errors, "pyproject missing alpha development-status classifier")
+    if "Development Status :: 5 - Production/Stable" not in pyproject:
+        fail(errors, "pyproject missing stable development-status classifier")
 
-    alpha_doc = (ROOT / "docs" / "status" / "alpha-readiness.md").read_text(encoding="utf-8").lower()
-    for phrase in ["local-first alpha", "synthetic data", "not a hosted saas", "not a multi-tenant production service", "alpha_gate.sh"]:
-        if phrase not in alpha_doc:
-            fail(errors, f"alpha-readiness doc missing required phrase: {phrase}")
+    release_doc = (ROOT / "docs" / "status" / "release-readiness.md").read_text(encoding="utf-8").lower()
+    for phrase in ["stable local-first", "synthetic data", "hosted platform operation", "multi-tenant deployment", "release_gate.sh"]:
+        if phrase not in release_doc:
+            fail(errors, f"release-readiness doc missing required phrase: {phrase}")
 
-    for rel in ["README.md", "CONTRIBUTING.md", "docs/status/alpha-readiness.md", "docs/status/current-implementation-status.md", "docs/status/public-readiness-audit.md"]:
+    for rel in ["README.md", "CONTRIBUTING.md", "docs/status/release-readiness.md", "docs/status/current-implementation-status.md"]:
         text = (ROOT / rel).read_text(encoding="utf-8").lower()
         for banned_public_planning_term in ["phase", "roadmap"]:
             if banned_public_planning_term in text:
@@ -174,7 +175,7 @@ def main() -> int:
             except Exception as exc:
                 fail(errors, f"invalid YAML example {path.relative_to(ROOT)}: {exc}")
 
-    for script_rel in ["examples/run-local-lifecycle.sh", "scripts/alpha_gate.sh"]:
+    for script_rel in ["examples/run-local-lifecycle.sh", "scripts/release_gate.sh", "scripts/alpha_gate.sh"]:
         script = ROOT / script_rel
         if not script.exists() or not (script.stat().st_mode & 0o111):
             fail(errors, f"{script_rel} missing or not executable")

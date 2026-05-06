@@ -1,6 +1,6 @@
 # Contributing to ShyftR
 
-ShyftR is currently a controlled-pilot, local-first MVP. Contributions should preserve append-only cell truth, review gates, and public-surface hygiene.
+ShyftR is currently a stable local-first project. Contributions should preserve append-only cell truth, review gates, and public-surface hygiene.
 
 ## local setup
 

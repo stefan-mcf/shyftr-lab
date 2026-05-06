@@ -36,7 +36,7 @@ def test_v1_discovery_endpoint_lists_stable_surface() -> None:
     assert payload["api_versions"] == ["v1"]
     assert payload["latest"] == "v1"
     assert payload["schema_version"] == "1.0.0"
-    assert "alpha" in payload["posture"]
+    assert payload["posture"] == "stable local-first release"
 
 
 def test_committed_openapi_v1_spec_contains_only_v1_paths() -> None:

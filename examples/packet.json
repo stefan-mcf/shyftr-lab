@@ -17,5 +17,5 @@
     "cell_health.health_score",
     "scoring_summary.average_decay_score"
   ],
-  "scope": "local controlled-pilot demo only"
+  "scope": "local reviewed demo only"
 }

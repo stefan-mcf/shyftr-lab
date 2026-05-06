@@ -1,33 +1,21 @@
-# ShyftR roadmap
+# ShyftR future work
 
-Status: public roadmap for local-first alpha planning.
+Status: public future-work notes for the stable local-first release.
 
-## Current alpha surface
+## Current stable local surface
 
-ShyftR proves local-first memory cells, append-only ledger truth, review-gated memory promotion, pack generation, feedback recording, local service/console operation, adapter discovery, and public-safe runtime integration examples.
+ShyftR currently supports local cells, append-only ledgers, review-gated memory promotion, pack generation, feedback recording, diagnostics, backup/restore, ledger verification, local service and console surfaces, versioned API aliases, adapter examples, and release-readiness gates.
 
-## Phase 8 productization sequence
+## Future local-first work
 
-1. Product docs and guides.
-2. Adapter SDK guide, template, and harness.
-3. `/v1` local HTTP API namespace and OpenAPI contract.
-4. Public alpha evidence collection.
-5. Desktop shell only after operator review justifies packaging work.
+Potential next work should be planned in a new artifact after the implementation-tranches plan closeout:
 
-## Phase 9 integration adapter sequence
+- richer package/release automation if package publication is separately approved;
+- additional local runtime adapters backed by synthetic fixtures and operator-approved data;
+- deeper migration dry-runs and rollback examples;
+- more console workflows for review queues, diagnostics, and backup/restore;
+- private-core-adjacent scoring/ranking/compaction only behind explicit public/private release decisions.
 
-1. Generic evidence adapters using the existing `SourceAdapter` protocol.
-2. Closeout artifact adapter for public-safe task/domain handoffs.
-3. Generic adapter ingestion into local evidence ledgers.
-4. Retrieval usage log contract for local generic clients.
-5. Operator gate before Phase 10.
+## Out of scope for the current public release
 
-Status record: `docs/status/phase-9-integration-adapters-closeout.md`.
-
-## Operator release-scope gate
-
-Before alpha-exit or stable-release wording, ShyftR needs a separate operator gate with exact-SHA CI, local verification, release-scope review, and documented acceptance.
-
-## Out of scope for public alpha
-
-Hosted SaaS, production multi-tenancy, real customer data, private-core scoring/ranking/compaction, and removal of alpha posture remain out of scope until later explicit gates pass.
+Hosted SaaS, production multi-tenancy, real customer data, private-core scoring/ranking/compaction, package publication, and support commitments remain outside the current public release until separately approved and evidenced.

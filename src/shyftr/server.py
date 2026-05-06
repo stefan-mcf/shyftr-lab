@@ -115,7 +115,7 @@ def _register_routes(app: FastAPI) -> None:
             "latest": "v1",
             "api_version": "v1",
             "schema_version": "1.0.0",
-            "posture": "local-first alpha",
+            "posture": "stable local-first release",
             "deprecated": [],
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }

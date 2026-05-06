@@ -1,6 +1,6 @@
 # ShyftR Local HTTP API
 
-Status: controlled-pilot local adapter. The HTTP service is optional and delegates to the same append-only cell functions used by the CLI. It is not a hosted product and does not create a second truth store.
+Status: stable local adapter. The HTTP service is optional and delegates to the same append-only cell functions used by the CLI. It is not a hosted product and does not create a second truth store.
 
 ## Start the service
 
@@ -10,7 +10,7 @@ shyftr serve --host 127.0.0.1 --port 8014
 curl -fsS http://127.0.0.1:8014/health
 ```
 
-Use `127.0.0.1`/`localhost` for normal operation. Binding to a non-local interface is outside the controlled-pilot default and should be reviewed like any other deployment decision.
+Use `127.0.0.1`/`localhost` for normal operation. Binding to a non-local interface is outside the local default and should be reviewed like any other deployment decision.
 
 ## Endpoint summary
 

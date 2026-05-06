@@ -2,7 +2,7 @@
 
 Metrics are deterministic projections over append-only Cell ledgers. They do
 not judge task quality with an LLM, mutate memory records, or change regulator
-state. The output is intended for local controlled-pilot inspection and status
+state. The output is intended for local reviewed inspection and status
 evidence.
 """
 from __future__ import annotations
@@ -161,7 +161,7 @@ def cell_health_metrics(cell_path: PathLike) -> Dict[str, Any]:
         "average_confidence": round(average_confidence, 4),
         "decay_summary": decay,
         "health_score": health_score,
-        "posture": "local controlled-pilot metric; review-gated and append-only",
+        "posture": "local release metric; review-gated and append-only",
     }
 
 

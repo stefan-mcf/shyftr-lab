@@ -17,7 +17,7 @@
 - Added CLI surfaces for `shyftr metrics` and `shyftr decay`.
 - Added console/API metric summaries and local demo artifacts.
 
-### controlled-pilot MVP prep
+### local release product prep
 
 - Reworked public landing documentation around local-first, append-only cell truth.
 - Added current implementation status and public-readiness audit ledgers.

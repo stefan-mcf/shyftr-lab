@@ -1,6 +1,6 @@
 # Adapter SDK guide
 
-Status: Phase 8 public-safe adapter SDK guide for local-first alpha users.
+Status: Phase 8 public-safe adapter SDK guide for stable local-first release users.
 
 ShyftR adapters bring external evidence into a cell without giving the external runtime authority over canonical memory truth. Adapters discover local/exported source material, preserve provenance, and let ShyftR run the same review-gated evidence -> candidate -> memory -> pack -> feedback loop.
 

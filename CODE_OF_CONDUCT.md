@@ -1,6 +1,6 @@
 # Code of Conduct
 
-ShyftR is a small public alpha project. Participation should stay respectful, constructive, and focused on making the project safer and clearer for developers.
+ShyftR is a small public release project. Participation should stay respectful, constructive, and focused on making the project safer and clearer for developers.
 
 ## Expected behavior
 

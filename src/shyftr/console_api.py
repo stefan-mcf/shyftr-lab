@@ -188,7 +188,7 @@ def frontier_review_surfaces(cell_path: PathLike) -> Dict[str, Any]:
     }
 
 def pilot_metrics(cell_path: PathLike) -> Dict[str, Any]:
-    """Compute controlled-pilot usefulness and operator-burden metrics."""
+    """Compute local release usefulness and operator-burden metrics."""
 
     from .metrics import metrics_summary
 

@@ -1,6 +1,6 @@
 # ShyftR Public Readiness Audit
 
-Status: public alpha baseline published; ongoing hardening and controlled-pilot testing continue through explicit gates.
+Status: public release baseline published; ongoing hardening and local release testing continue through explicit gates.
 
 ## Repository identity
 
@@ -9,7 +9,7 @@ Status: public alpha baseline published; ongoing hardening and controlled-pilot 
 | Checkout path | Repository root |
 | Remote | `https://github.com/stefan-mcf/shyftr.git` |
 | GitHub repo | `stefan-mcf/shyftr` |
-| Visibility at audit start | private; public alpha baseline published after clean one-commit export |
+| Visibility at audit start | private; public release baseline published after clean one-commit export |
 | Branch at audit start | `main...origin/main [ahead 8]` |
 | Cleanup boundary | local files only; no push, visibility flip, tag, package publish, or history rewrite |
 | Commit identity for cleanup | `stefan-mcf <73107236+stefan-mcf@users.noreply.github.com>` |
@@ -32,7 +32,7 @@ Status: public alpha baseline published; ongoing hardening and controlled-pilot 
 | F-12 | medium | Examples lacked a public map and deterministic lifecycle script. | resolved locally | Added `examples/README.md` and `examples/run-local-lifecycle.sh`. |
 | F-13 | medium | package metadata and release stance were ambiguous. | resolved locally | `pyproject.toml` metadata updated while retaining version `0.0.0`. |
 | F-14 | medium | Contributor/security/community surface was incomplete. | resolved locally | Added CONTRIBUTING, SECURITY, CHANGELOG, CODE_OF_CONDUCT, PR and issue templates. |
-| F-15 | high | Public docs needed a clear alpha/future-capability boundary. | resolved locally | Public-facing status and README mark ShyftR as alpha without internal planning references. |
+| F-15 | high | Public docs needed a clear release/future-capability boundary. | resolved locally | Public-facing status and README now use stable local-first release posture without internal planning references. |
 | F-16 | medium | Public readiness scan was ad hoc and missed tracked docs/plans/source notes. | resolved locally | `scripts/public_readiness_check.py` now scans tracked public docs, examples, scripts, and GitHub metadata paths, with regression tests for local path leaks. |
 | F-17 | medium | Full gate needed normalized environment. | resolved locally | `scripts/smoke-install.sh` creates a temp venv and installs extras. |
 | F-18 | medium | `.hermes/plans` was untracked and could leak. | resolved locally | `.hermes/` ignored; public-safe summary lives in this report. |
@@ -42,7 +42,7 @@ Status: public alpha baseline published; ongoing hardening and controlled-pilot 
 
 Current docs intended as public navigation and evidence: `README.md`, `docs/status/**`, `docs/development.md`, `docs/example-lifecycle.md`, `docs/runtime-integration-example.md`, `docs/api.md`, `docs/console.md`, `docs/concepts/**`, `examples/**`, and GitHub community files.
 
-Existing files under `docs/plans/**`, `docs/sources/**`, `docs/feeds/**`, and `docs/runbooks/**` are classified as historical implementation notes, source concept notes, or controlled-pilot runbooks. They may contain future concepts or historical runtime names. They must not be treated as current product capability. Removing, rewriting, or excluding them from a public-history export is a final publication decision and is not performed autonomously in this cleanup.
+Existing files under `docs/plans/**`, `docs/sources/**`, `docs/feeds/**`, and `docs/runbooks/**` are classified as historical implementation notes, source concept notes, or local operation runbooks. They may contain future concepts or historical runtime names. They must not be treated as current product capability. Removing, rewriting, or excluding them from a public-history export is a final publication decision and is not performed autonomously in this cleanup.
 
 ## Scan and gate summary
 
@@ -70,6 +70,35 @@ Latest local gate run: 2026-05-06.
 
 ## Publication decision
 
-Completed: the public repository was published as a clean one-commit alpha baseline after private-side gates, clean-history export verification, CI, public visibility verification, unauthenticated clone checks, and fresh-clone readiness scans.
+Completed: the public repository was published as a clean one-commit release baseline after private-side gates, clean-history export verification, CI, public visibility verification, unauthenticated clone checks, and fresh-clone readiness scans.
 
-Current rule: keep the repo clearly labelled as local-first alpha / controlled-pilot. Before operator release-scope review, run `bash scripts/alpha_gate.sh` and expect `ALPHA_GATE_READY`. Do not use sensitive production memory until operator dogfooding, readiness reports, diagnostics, and fallback/archive evidence support a bounded pilot.
+Current rule: keep the repo clearly labelled as stable local-first release / local-reviewed. Before operator release-scope review, run `bash scripts/release_gate.sh` and expect `SHYFTR_RELEASE_READY`. Do not use sensitive production memory until operator dogfooding, readiness reports, diagnostics, and fallback/archive evidence support a bounded pilot.
+
+## Checkpoint F release-posture closeout evidence
+
+Recorded: 2026-05-06T23:21:24Z
+Baseline before closeout: `eec57c6d34130ca2a44d23d0cd0b42053214b7df`
+
+Operator decision: all human-gated review walls were approved for this completion run. The agent acted as operator reviewer and closed the implementation-tranches plan through Checkpoint F.
+
+Closeout artifacts:
+
+- `docs/status/phase-12-checkpoint-e-readiness-closeout.md`
+- `docs/status/phase-13-checkpoint-e-decision.md`
+- `docs/status/phase-14-checkpoint-f-closeout.md`
+- `docs/status/release-readiness.md`
+- `scripts/release_gate.sh`
+
+Latest local verification before commit:
+
+| Gate | Command | Result |
+|---|---|---|
+| Full local check | `PYTHON=.venv/bin/python bash scripts/check.sh` | PASS; 890 tests passed, lifecycle passed, console build/audit passed, public readiness PASS |
+| Release gate | `PYTHON=.venv/bin/python bash scripts/release_gate.sh` | PASS; 890 tests passed, synthetic replacement-readiness replay passed, console build/audit passed, final verdict `SHYFTR_RELEASE_READY` |
+| Public readiness | `.venv/bin/python scripts/public_readiness_check.py` | PASS |
+| Terminology stale guard | `.venv/bin/python scripts/terminology_inventory.py --fail-on-public-stale` | PASS |
+| Terminology capitalization guard | `.venv/bin/python scripts/terminology_inventory.py --fail-on-capitalized-prose` | PASS |
+| Diff whitespace | `git diff --check` | PASS |
+| Independent review | read-only delegate review of uncommitted diff | PASS after fixing the reported `local local` wording blocker |
+
+Current rule: ShyftR is presented as a stable local-first public release. This does not authorize hosted platform operation, multi-tenant deployment, package publication, paid support commitments, private-core-heavy release, or unreviewed sensitive/customer/employer/regulated memory.
