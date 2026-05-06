@@ -4,9 +4,9 @@ Status: Wave 0-4 execution record for Tranche 8.5 public alpha.
 
 Recorded: 2026-05-06T08:09:52Z
 
-Exact public SHA: `c610174c037d9bf7999bc4d747488cada84d6df9`
+Wave 0 preflight public SHA: `c610174c037d9bf7999bc4d747488cada84d6df9`
 
-CI evidence:
+Wave 0 preflight CI evidence:
 
 - Workflow: CI
 - Run: https://github.com/stefan-mcf/shyftr/actions/runs/25423497127
