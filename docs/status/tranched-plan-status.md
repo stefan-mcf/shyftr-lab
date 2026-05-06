@@ -130,9 +130,9 @@ Private-core route:
 
 Gate type: revision.
 
-Objective: collect enough feedback to decide whether Tranche 8.5 can close.
+Objective: collect enough feedback to decide whether Tranche 8.5 can use externally validated alpha language.
 
-Minimum evidence:
+Minimum evidence when external validation is claimed:
 
 - tester count;
 - exact SHA tested;
@@ -143,28 +143,30 @@ Minimum evidence:
 - first-impression concept clarity;
 - actionable bug list.
 
-Stop condition:
+Rescope behavior:
 
-- if fewer than 3 technical testers complete the gate, keep Tranche 8.5 open.
+- if fewer than 3 technical testers complete the gate, do not claim external alpha validation;
+- the operator may explicitly defer this evidence and continue pre-Phase-6 planning from local gates and operator usability acceptance;
+- keep the external evidence tracker open and record reports when they arrive.
 
 ### Wave 4: Tranche 8.5 closeout decision
 
 Gate type: escalation.
 
-Objective: decide whether to close Tranche 8.5, keep it open, or split remaining proof into a follow-up tranche.
+Objective: decide whether to close Tranche 8.5, keep it open, or split remaining proof into a follow-up tracker.
 
-Close only if:
+Close only as externally validated if:
 
 - CI and local gates remain green;
 - tester evidence is recorded;
 - runtime/pilot proof is satisfied or explicitly scoped out for the first alpha wave;
 - product value is understandable enough from public docs and tester reports.
 
-If not closeable:
+If not externally validated:
 
-- keep Tranche 8.5 open;
-- create a narrow follow-up hardening run from the observed failures;
-- do not proceed to Checkpoint E.
+- split or keep the tester-evidence track open;
+- allow continued pre-Phase-6 planning only if explicitly operator-rescoped from local gate evidence;
+- do not proceed to Checkpoint E or stable-release language from local-only evidence.
 
 ## Private-core separation during the run
 

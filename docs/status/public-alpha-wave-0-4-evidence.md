@@ -141,7 +141,7 @@ Decision:
 
 Gate type: revision.
 
-Result: NOT ENOUGH EXTERNAL TESTER EVIDENCE TO CLOSE TRANCHE 8.5.
+Result: DEFERRED BY OPERATOR RESCOPE; NOT FABRICATED.
 
 Evidence collected during this run:
 
@@ -150,16 +150,19 @@ Evidence collected during this run:
 | tester count | 0 external testers completed during this local run |
 | pre-template tested SHA | `c610174c037d9bf7999bc4d747488cada84d6df9` |
 | local alpha gate verdict | `ALPHA_GATE_READY` |
-| external alpha gate verdicts | none yet |
-| install friction | none from external testers yet |
-| demo/lifecycle result | local gate passed; external results pending |
-| concept clarity | external results pending |
+| operator usability note | operator reports the project makes sense and is working enough to continue without waiting for testers |
+| external alpha gate verdicts | deferred; none yet |
+| install friction | deferred; none from external testers yet |
+| demo/lifecycle result | local gate passed; external results deferred |
+| concept clarity | operator-accepted for continued planning; external results deferred |
 | actionable bug list | none from external testers yet |
 
-Stop-condition application:
+Rescope decision:
 
-- Fewer than 3 technical testers completed the gate, so Tranche 8.5 remains open.
-- Tester outreach may proceed using the Wave 1 packet, but closure requires returned external evidence.
+- The original 3-tester threshold is no longer treated as a blocking prerequisite for continued pre-Phase-6 planning.
+- External tester reports remain valuable public-alpha evidence and continue to be tracked in GitHub issue #1: https://github.com/stefan-mcf/shyftr/issues/1
+- This record does not invent tester evidence and does not claim external alpha validation.
+- Any future public alpha/stable-release claim should still incorporate external reports before using externally validated language.
 
 External tester evidence rows to add when available:
 
@@ -171,30 +174,28 @@ External tester evidence rows to add when available:
 
 Gate type: escalation.
 
-Decision: KEEP TRANCHE 8.5 OPEN.
+Decision: SPLIT EXTERNAL TESTER PROOF INTO A FOLLOW-UP PUBLIC-ALPHA TRACKER; ALLOW CONTINUED PRE-PHASE-6 PLANNING.
 
 Closeout checks:
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | CI and local gates remain green | pass | exact-SHA CI success, public readiness PASS, alpha gate `ALPHA_GATE_READY` |
-| tester evidence is recorded | partial | local evidence recorded; 0 external testers completed |
+| tester evidence is recorded | deferred | 0 external testers completed; operator explicitly chose not to block continued planning on this gate |
 | runtime/pilot proof satisfied or narrowed | pass for first alpha wave | replayable runtime-neutral adapter harness passed |
-| product value understandable from public docs and tester reports | partial | public docs ready; tester reports pending |
+| product value understandable from public docs and tester reports | operator-accepted; external validation deferred | public docs ready; operator reports it makes sense and is working enough to continue |
 
 Result:
 
-- Tranche 8.5 cannot close yet because external tester evidence is missing.
+- Tranche 8.5 is split: local/public-safe Wave 0-2 evidence is accepted for continued planning, while external tester proof remains open as follow-up evidence.
+- This run still does not authorize public claims of external alpha validation.
 - No Checkpoint E work is authorized by this run.
 - No Checkpoint F cleanup is authorized by this run.
 - Phase 6 was not started.
 
 Next narrow hardening run:
 
-- Track external alpha tester evidence in GitHub issue #1: https://github.com/stefan-mcf/shyftr/issues/1
-- Send the Wave 1 tester packet to 3-5 technical testers.
-- Before outreach, rerun Wave 0 gates and tell testers to record the exact SHA from `git rev-parse HEAD`.
-- Prefer the GitHub alpha test report template for returned results: `.github/ISSUE_TEMPLATE/alpha_test_report.md`.
-- Record each returned result in the Wave 3 table.
-- Re-run Wave 0 gates on the exact SHA if any tracked files change before tester outreach.
-- Close or split Tranche 8.5 only after the external evidence threshold is met or the remaining proof is explicitly rescoped.
+- Continue from the next pre-Phase-6 planning surface rather than waiting for 3 tester reports.
+- Keep GitHub issue #1 open for external reports when they arrive: https://github.com/stefan-mcf/shyftr/issues/1
+- Before any alpha-exit, stable-release, or externally validated claim, record returned tester evidence in the Wave 3 table or a successor status artifact.
+- Re-run Wave 0 gates on the exact SHA before broader outreach or release-language changes.
