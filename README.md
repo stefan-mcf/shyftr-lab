@@ -20,7 +20,7 @@ See `docs/status/current-implementation-status.md` for the evidence-backed capab
 ShyftR is a local memory-cell substrate for agents and agent runtimes:
 
 | Step | What happens |
-|---|---|---|
+|---|---|
 | evidence | raw task output, notes, logs, or example material enter an append-only cell ledger |
 | candidate | ShyftR extracts bounded memory proposals from evidence |
 | memory | a reviewer approves a candidate before it becomes durable memory |
