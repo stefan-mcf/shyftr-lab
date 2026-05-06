@@ -2,7 +2,8 @@
 
 Status: PASS with one local-worktree hygiene note; no public-release blocker found.
 Date: 2026-05-07
-Audited commit: `9b670ba1b414527ebe7c1fe92c6cb1b5f9cbde85`
+Audited closeout commit: `9b670ba1b414527ebe7c1fe92c6cb1b5f9cbde85`
+Note: this audit report is committed after the closeout commit, so final remote `main` should be verified against the report commit in the session closeout.
 Repository: `stefan-mcf/shyftr`
 Visibility: public
 CI run: https://github.com/stefan-mcf/shyftr/actions/runs/25466682399
@@ -32,7 +33,7 @@ No blocker or high-severity remediation is required before treating the plan as 
 | Topics | `agentic-ai`, `ai-agents`, `memory`, `rag`, `vector-search`, `agent-memory`, `ai-memory`, `recursive-memory` |
 | Commit author/committer | `stefan-mcf` using noreply email |
 | Contributors endpoint | `stefan-mcf` only |
-| Exact remote SHA | `9b670ba1b414527ebe7c1fe92c6cb1b5f9cbde85` |
+| Exact closeout SHA audited before this report | `9b670ba1b414527ebe7c1fe92c6cb1b5f9cbde85` |
 | Exact-SHA CI | success |
 
 ## Audit findings
@@ -111,7 +112,7 @@ Recommended future polish only:
 ## Final publication gate
 
 - Local commit was pushed to `origin/main`.
-- Remote `main` equals audited SHA `9b670ba1b414527ebe7c1fe92c6cb1b5f9cbde85`.
+- Remote `main` equaled the audited closeout SHA before this report was committed; final report-commit verification is recorded in the session closeout.
 - GitHub Actions succeeded for that exact SHA.
 - Visibility is public.
 - Attribution maps to `stefan-mcf`.
