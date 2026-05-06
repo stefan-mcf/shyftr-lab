@@ -636,7 +636,7 @@ RI-10 and RI-11 make the integration layer easier to extend and embed.
 
 ## Final verification before completing the runtime integration plan
 
-Run from `/Users/stefan/shyftr-lab`:
+Run from a private ShyftR lab checkout:
 
 ```bash
 python3 -m pytest -q

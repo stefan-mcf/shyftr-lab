@@ -1,6 +1,6 @@
 # ShyftR Future Concepts & Frontier Features
 
-> Source: `/Users/stefan/Desktop/ShyftR Future Concepts & Frontier Features.pdf`
+> Source: operator-local concept document, sanitized into this public note.
 > Converted from PDF to Markdown for repository reference. Source PDF pages: 3.
 
 This document consolidates the forward-looking ideas discussed for ShyftR. These concepts are not part of the immediate MVP but outline a bold vision for turning ShyftR into a groundbreaking cognitive substrate. They are grouped into thematic areas for clarity.

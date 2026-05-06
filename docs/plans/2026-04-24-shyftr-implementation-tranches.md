@@ -1342,7 +1342,7 @@ Verify Phase 4 is complete before durability work starts.
 python3 -m pytest tests/test_console_api.py tests/test_server.py -q
 python3 -m pytest -q
 cd apps/console && npm run build && npm audit --omit=dev
-cd /Users/stefan/ShyftR && git diff --check
+git diff --check
 ```
 
 ### Required review evidence
@@ -1538,7 +1538,7 @@ Close the next major checkpoint before any Phase 6 multi-cell intelligence work.
 python3 -m pytest tests/test_console_api.py tests/test_server.py -q
 python3 -m pytest -q
 cd apps/console && npm run build && npm audit --omit=dev
-cd /Users/stefan/ShyftR && git diff --check && git status --short --branch
+git diff --check && git status --short --branch
 ```
 
 ### Required review evidence

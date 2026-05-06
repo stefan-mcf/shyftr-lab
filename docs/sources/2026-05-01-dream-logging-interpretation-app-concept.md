@@ -1,6 +1,6 @@
 # Dream Logging & Interpretation App Concept
 
-> Source: `/Users/stefan/Desktop/Dream Logging & Interpretation App Concept.pdf`
+> Source: operator-local concept document, sanitized into this public note.
 > Converted from PDF to Markdown for repository reference. Source PDF pages: 5.
 
 ## Overview

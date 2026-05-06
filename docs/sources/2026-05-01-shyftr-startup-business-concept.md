@@ -1,6 +1,6 @@
 # ShyftR Startup & Business Concept
 
-> Source: `/Users/stefan/Desktop/ShyftR Startup & Business Concept.pdf`
+> Source: operator-local concept document, sanitized into this public note.
 > Converted from PDF to Markdown for repository reference. Source PDF pages: 3.
 
 ## Vision

@@ -6,7 +6,7 @@ Status: public alpha baseline published; ongoing hardening and controlled-pilot 
 
 | Field | Value |
 |---|---|
-| Local path | `/Users/stefan/ShyftR` |
+| Checkout path | Repository root |
 | Remote | `https://github.com/stefan-mcf/shyftr.git` |
 | GitHub repo | `stefan-mcf/shyftr` |
 | Visibility at audit start | private; public alpha baseline published after clean one-commit export |
@@ -31,18 +31,18 @@ Status: public alpha baseline published; ongoing hardening and controlled-pilot 
 | F-11 | medium | API and console docs were incomplete. | resolved locally | Added `docs/api.md` and `docs/console.md`. |
 | F-12 | medium | Examples lacked a public map and deterministic lifecycle script. | resolved locally | Added `examples/README.md` and `examples/run-local-lifecycle.sh`. |
 | F-13 | medium | package metadata and release stance were ambiguous. | resolved locally | `pyproject.toml` metadata updated while retaining version `0.0.0`. |
-| F-14 | medium | Contributor/security/community surface was incomplete. | resolved locally | Added CONTRIBUTING, SECURITY, CHANGELOG, PR and issue templates. |
+| F-14 | medium | Contributor/security/community surface was incomplete. | resolved locally | Added CONTRIBUTING, SECURITY, CHANGELOG, CODE_OF_CONDUCT, PR and issue templates. |
 | F-15 | high | Public docs needed a clear alpha/future-capability boundary. | resolved locally | Public-facing status and README mark ShyftR as alpha without internal planning references. |
-| F-16 | medium | Public readiness scan was ad hoc. | resolved locally | Added `scripts/public_readiness_check.py`. |
+| F-16 | medium | Public readiness scan was ad hoc and missed tracked docs/plans/source notes. | resolved locally | `scripts/public_readiness_check.py` now scans tracked public docs, examples, scripts, and GitHub metadata paths, with regression tests for local path leaks. |
 | F-17 | medium | Full gate needed normalized environment. | resolved locally | `scripts/smoke-install.sh` creates a temp venv and installs extras. |
 | F-18 | medium | `.hermes/plans` was untracked and could leak. | resolved locally | `.hermes/` ignored; public-safe summary lives in this report. |
-| F-19 | medium | Large-object, line-ending, and dependency-license checks were missing. | resolved locally / advisory | Added `.gitattributes`; check script summarizes large/binary and dependency-license inventory gaps. |
+| F-19 | medium | Large-object, line-ending, dependency-license, and codebase composition checks were incomplete. | resolved locally | Added `.gitattributes`; project-specific Python license inventory, Node dependency license summary, and pygount composition evidence are recorded below. |
 
 ## Historical and future-doc classification
 
 Current docs intended as public navigation and evidence: `README.md`, `docs/status/**`, `docs/development.md`, `docs/example-lifecycle.md`, `docs/runtime-integration-example.md`, `docs/api.md`, `docs/console.md`, `docs/concepts/**`, `examples/**`, and GitHub community files.
 
-Existing files under `docs/plans/**`, `docs/sources/**`, `docs/feeds/**`, and `docs/runbooks/**` are classified as historical implementation notes, source concept notes, or controlled-pilot runbooks. They may contain future concepts, local path evidence, or historical runtime names. They must not be treated as current product capability. Removing, rewriting, or excluding them from a public-history export is a final publication decision and is not performed autonomously in this cleanup.
+Existing files under `docs/plans/**`, `docs/sources/**`, `docs/feeds/**`, and `docs/runbooks/**` are classified as historical implementation notes, source concept notes, or controlled-pilot runbooks. They may contain future concepts or historical runtime names. They must not be treated as current product capability. Removing, rewriting, or excluding them from a public-history export is a final publication decision and is not performed autonomously in this cleanup.
 
 ## Scan and gate summary
 
@@ -58,11 +58,13 @@ Latest local gate run: 2026-05-06.
 | Smoke install | `bash scripts/smoke-install.sh` | PASS with uv-backed temp venv |
 | Full local check | `PATH=/tmp/shyftr-public-verify-venv/bin:$PATH PYTHON=/tmp/shyftr-public-verify-venv/bin/python bash scripts/check.sh` | PASS; includes pytest, lifecycle, console build/audit, readiness |
 | Console build/audit | `(cd apps/console && npm run build && npm audit --omit=dev)` | PASS; build completed and 0 vulnerabilities reported |
-| Public readiness | `python scripts/public_readiness_check.py` | PASS |
+| Public readiness | `python scripts/public_readiness_check.py` | PASS; tracked docs/plans/source notes included in private-path scan |
 | Artifact scan | `git ls-files -ci --exclude-standard` | PASS; no tracked ignored files |
 | Large object scan | `git rev-list --objects --all ... >1MB` | PASS; no blobs above threshold reported |
 | Binary scan | `git ls-files -z \| xargs -0 file ...` | PASS; no tracked binary/image/archive hits reported |
-| Dependency license inventory | `pip-licenses --format=markdown --with-urls`; `npm ls --json --all` | PASS/advisory; Python licenses inventoried, npm dependency tree captured for manual review |
+| Python dependency license inventory | `uv venv --python python3.11 /tmp/shyftr-license-venv`; `uv pip install --python /tmp/shyftr-license-venv/bin/python -e . pip-licenses`; `/tmp/shyftr-license-venv/bin/pip-licenses --format=markdown --with-urls` | PASS; isolated project install reports ShyftR itself as MIT-licensed with no third-party runtime Python packages |
+| Console dependency license inventory | `cd apps/console && npx --yes license-checker --summary --excludePrivatePackages` | PASS; third-party console packages summarize as MIT 137, ISC 8, Apache-2.0 4, BSD-2-Clause 2, BSD-3-Clause 2, MIT-0 1, CC-BY-4.0 1; local private `@shyftr/console` package has explicit MIT metadata in `package.json`/lockfile |
+| Codebase composition | `uvx --from pygount pygount --format=summary --folders-to-skip='.git,node_modules,venv,.venv,__pycache__,.cache,dist,build,.next,.tox,.eggs,*.egg-info' .` | PASS; 210 counted files, 19,738 code lines, 10,917 comment/doc lines; primary code is Python with small TypeScript/TSX console surface |
 | Diff whitespace | `git diff --check` | PASS |
 | Independent review | read-only repo review | PASS; independent review returned no blockers |
 
@@ -70,4 +72,4 @@ Latest local gate run: 2026-05-06.
 
 Completed: the public repository was published as a clean one-commit alpha baseline after private-side gates, clean-history export verification, CI, public visibility verification, unauthenticated clone checks, and fresh-clone readiness scans.
 
-Current rule: keep the repo clearly labelled as local-first alpha / controlled-pilot controlled pilot. Before inviting outside technical testers, run `bash scripts/alpha_gate.sh` and expect `ALPHA_GATE_READY`. Do not direct testers to use sensitive production memory until operator dogfooding, readiness reports, diagnostics, and fallback/archive evidence support a bounded pilot.
+Current rule: keep the repo clearly labelled as local-first alpha / controlled-pilot. Before inviting outside technical testers, run `bash scripts/alpha_gate.sh` and expect `ALPHA_GATE_READY`. Do not direct testers to use sensitive production memory until operator dogfooding, readiness reports, diagnostics, and fallback/archive evidence support a bounded pilot.

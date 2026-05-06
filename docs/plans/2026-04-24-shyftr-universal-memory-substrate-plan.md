@@ -944,7 +944,7 @@ At that point, external markdown tools remain useful surfaces, but ShyftR owns d
 
 ## Verification before each tranche commit
 
-Run from `/Users/stefan/shyftr-lab`:
+Run from a private ShyftR lab checkout:
 
 ```bash
 python3 -m pytest -q

@@ -1,6 +1,6 @@
 # Language Learning App Concept
 
-> Source: `/Users/stefan/Desktop/Language Learning App Concept (ShyftR‑Powered).pdf`
+> Source: operator-local concept document, sanitized into this public note.
 > Converted from PDF to Markdown for repository reference. Source PDF pages: 4.
 
 ## (ShyftR-Powered)

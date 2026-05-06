@@ -594,7 +594,7 @@ Acceptance criteria:
 
 ## Final verification before completing the follow-up plan
 
-Run from `/Users/stefan/shyftr-lab`:
+Run from a private ShyftR lab checkout:
 
 ```bash
 python3 -m pytest -q

@@ -49,29 +49,30 @@ BANNED_README = [
     "enterprise-grade",
 ]
 PRIVATE_PATTERNS = [
-    re.compile(r"/Users/(?!stefan/ShyftR\b)"),
+    re.compile(r"/(Users|home)/[^\s`)\]}>\"']+"),
     re.compile(r"stefan@example\.com"),
     re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
     re.compile(r"ghp_[A-Za-z0-9_]{20,}"),
     re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
     re.compile(r"-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----"),
 ]
-CURRENT_PUBLIC_PATHS = [
+PUBLIC_PREFIXES = (
+    "docs/",
+    "examples/",
+    ".github/",
+    "scripts/",
+)
+PUBLIC_FILES = {
     "README.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
     "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
     "pyproject.toml",
-    "docs/status",
-    "docs/development.md",
-    "docs/api.md",
-    "docs/console.md",
-    "docs/example-lifecycle.md",
-    "docs/runtime-integration-example.md",
-    "docs/concepts",
-    "examples",
-    ".github",
-]
+}
+PRIVATE_PATTERN_SOURCE_ALLOWLIST = {
+    "scripts/public_readiness_check.py",
+}
 ALLOW_UNTRACKED_PREFIXES = {".hermes/"}
 RISKY_UNTRACKED = re.compile(r"(\.env|auth\.json|MEMORY\.md|USER\.md|state\.db|\.sqlite|\.sqlite3|\.db|\.pem|\.key|id_rsa|id_ed25519|\.tar\.gz)$", re.I)
 
@@ -87,13 +88,16 @@ def fail(errors: list[str], message: str) -> None:
 
 def public_files() -> list[Path]:
     out: list[Path] = []
-    for rel in CURRENT_PUBLIC_PATHS:
-        p = ROOT / rel
-        if p.is_file():
-            out.append(p)
-        elif p.is_dir():
-            out.extend(x for x in p.rglob("*") if x.is_file() and ".git" not in x.parts)
+    for rel in run_git("ls-files"):
+        if rel in PUBLIC_FILES or rel.startswith(PUBLIC_PREFIXES):
+            out.append(ROOT / rel)
     return sorted(set(out))
+
+
+def allowed_private_pattern_match(rel: str, line: str) -> bool:
+    if rel in PRIVATE_PATTERN_SOURCE_ALLOWLIST and "re.compile" in line:
+        return True
+    return False
 
 
 def main() -> int:
@@ -176,9 +180,10 @@ def main() -> int:
         except UnicodeDecodeError:
             continue
         rel = path.relative_to(ROOT).as_posix()
-        for pat in PRIVATE_PATTERNS:
-            if pat.search(text):
-                fail(errors, f"private/secret pattern in current public file: {rel}: {pat.pattern}")
+        for lineno, line in enumerate(text.splitlines(), 1):
+            for pat in PRIVATE_PATTERNS:
+                if pat.search(line) and not allowed_private_pattern_match(rel, line):
+                    fail(errors, f"private/secret pattern in current public file: {rel}:{lineno}: {pat.pattern}")
 
     print("ShyftR public readiness check")
     for warning in warnings:

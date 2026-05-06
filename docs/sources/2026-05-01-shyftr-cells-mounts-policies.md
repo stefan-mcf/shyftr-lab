@@ -1,6 +1,6 @@
 # ShyftR cells, Mounts & Policies
 
-> Source: `/Users/stefan/Desktop/ShyftR cells, Mounts & Policies.pdf`
+> Source: operator-local concept document, sanitized into this public note.
 > Converted from PDF to Markdown for repository reference. Source PDF pages: 4.
 
 This document describes the design of ShyftR cells and the policy framework that governs how they ingest evidence, promote memory, retrieve context and learn from feedbacks. It also introduces the concept of mounts, which attach cells to specific layers of a runtime or organisation.

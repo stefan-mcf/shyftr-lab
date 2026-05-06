@@ -28,7 +28,7 @@ All implementation tranches below are repo-local and should not mutate global He
 
 Canonical repo:
 
-- `/Users/stefan/ShyftR`
+- the canonical public ShyftR checkout
 
 Source decision note:
 
@@ -50,7 +50,7 @@ Forbidden without approval:
 - irreversible ledger migration without backup/restore proof;
 - pushing to remote;
 - changing package distribution status;
-- mutating `/Users/stefan/.hermes` except separately approved skill doctrine updates after the repo plan is proven.
+- mutating the operator-local Hermes configuration except separately approved skill doctrine updates after the repo plan is proven.
 
 ## Canonical target vocabulary
 

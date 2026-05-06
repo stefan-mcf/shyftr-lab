@@ -1,6 +1,6 @@
 # ShyftR Naming Conventions
 
-> Source: `/Users/stefan/Desktop/shyftR naming convention truth.pdf`
+> Source: operator-local concept document, sanitized into this public note.
 > Converted from PDF to Markdown for repository reference. Source PDF pages: 4.
 
 This document records the current naming recommendations for the major concepts in ShyftR. The goal of this scheme is to use terms that are memorable, easy to teach and understand, and consistent with the project’s "battery/memory cell" theme. Where previous implementations used different names, a mapping is provided to aid migration.

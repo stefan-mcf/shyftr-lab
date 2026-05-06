@@ -1,6 +1,6 @@
 # ShyftR → Antaeus/Hermes Integration Strategy
 
-> Source: `/Users/stefan/Desktop/ShyftR → Antaeus:Hermes Integration Strategy.pdf`
+> Source: operator-local concept document, sanitized into this public note.
 > Converted from PDF to Markdown for repository reference. Source PDF pages: 3.
 
 This document proposes a staged plan for integrating ShyftR with Antaeus/Hermes or a similar agent runtime. Integration should begin early in the development process but progress cautiously from observation to full memory replacement. The stages below align with the implementation plan; stage boundaries correspond to the completion of certain tranches.

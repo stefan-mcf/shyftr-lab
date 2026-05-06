@@ -1,12 +1,12 @@
 # `/goal` Prompt: Phase 4 to Phase 5 Durability Checkpoint
 
-Use this from `/Users/stefan/ShyftR` after the repo is clean and the Phase 2/3 console checkpoint is present.
+Use this from the repository root after the repo is clean and the Phase 2/3 console checkpoint is present.
 
 ```text
 Proceed optimally with ShyftR from Tranche 4.1 through the Phase 5 durability checkpoint.
 
 Source of truth:
-- /Users/stefan/ShyftR/docs/plans/2026-04-24-shyftr-implementation-tranches.md
+- docs/plans/2026-04-24-shyftr-implementation-tranches.md
 - Start at: Phase 4 / Tranche 4.1 Sweep Proposal Engine
 - Stop at: Phase 5 Gate: Durability Checkpoint
 - Do not start Phase 6 without a new instruction.
