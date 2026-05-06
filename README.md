@@ -2,12 +2,6 @@
 
 Local-first, append-only memory control plane for AI agents.
 
-## Current status
-
-ShyftR is a local-first alpha / controlled-pilot developer-preview MVP. It is designed for local cells, synthetic demos, and operator-approved pilots where durable agent memory must stay inspectable, review-gated, and file-backed.
-
-It is not a hosted SaaS product, not a multi-tenant production service, not production-hardened, and not a package release. Multi-cell federation and hosted platform operation remain deliberate non-goals for this repository.
-
 ## Why it exists
 
 Agent memory often becomes opaque profile state, ad hoc context, or a vector index without durable evidence. ShyftR gives an agent a local memory cell whose ledger is the source of truth:
