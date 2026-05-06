@@ -1947,6 +1947,29 @@ Release to a small group of technical users.
 
 ---
 
+## Checkpoint E: Alpha Exit / Beta-Readiness Cut
+
+### Objective
+Define the earliest point where public-facing docs may stop describing ShyftR as alpha.
+
+### Expected timing
+Do not remove alpha status before Tranche 8.5 has run with external tester evidence and all criteria below pass. Until then, README, status docs, package metadata, and public gates must keep the alpha label.
+
+### Required evidence
+1. `scripts/alpha_gate.sh` passes from a clean public clone on at least two fresh environments.
+2. Three to five external technical testers complete clone/install/gate/demo and produce actionable feedback.
+3. Zero blocker issues remain open for install, CLI smoke, lifecycle demo, synthetic readiness replay, diagnostics, public-readiness scan, or console build.
+4. At least one operator-owned dogfooding loop has run on non-sensitive or approved local data for a sustained period, with reviewed diagnostic/readiness evidence.
+5. Backup/restore and ledger verification have been exercised on a fixture Cell and one operator-approved real local Cell.
+6. Public docs still avoid production/service overclaims and describe only implemented behavior.
+7. Private-core experiments required for advanced scoring/ranking/compaction are either explicitly not part of the beta boundary or have passed their private overlay gates.
+8. The release decision is recorded in a status update before public wording changes.
+
+### Stop condition
+If any item above fails, keep ShyftR labelled alpha and continue hardening. Passing this checkpoint permits a later public-doc update from alpha to beta/developer preview, but does not imply production readiness or hosted-service readiness.
+
+---
+
 # Long-Term Product Cut Lines
 
 ## Replacement-Ready Backend

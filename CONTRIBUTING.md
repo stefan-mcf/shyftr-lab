@@ -28,5 +28,5 @@ npm audit --omit=dev
 - Keep examples synthetic and free of secrets/private data.
 - Add or update tests for behavior changes.
 - Update docs when CLI/API/console behavior changes.
-- Do not expand Phase 6 or multi-cell intelligence without a prior issue/plan.
+- Do not expand distributed multi-cell intelligence without a prior issue/plan.
 - Preserve local-first behavior; no hidden cloud or external-service dependency in default tests.

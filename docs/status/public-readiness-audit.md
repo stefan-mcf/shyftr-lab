@@ -32,7 +32,7 @@ Status: public alpha baseline published; ongoing hardening and controlled-pilot 
 | F-12 | medium | Examples lacked a public map and deterministic lifecycle script. | resolved locally | Added `examples/README.md` and `examples/run-local-lifecycle.sh`. |
 | F-13 | medium | Package metadata and release stance were ambiguous. | resolved locally | `pyproject.toml` metadata updated while retaining version `0.0.0`. |
 | F-14 | medium | Contributor/security/community surface was incomplete. | resolved locally | Added CONTRIBUTING, SECURITY, CHANGELOG, PR and issue templates. |
-| F-15 | high | Public docs needed a Phase 6/future boundary. | resolved locally | Status and README mark Phase 6 as not started/out of scope. |
+| F-15 | high | Public docs needed a clear alpha/future-capability boundary. | resolved locally | Public-facing status and README mark ShyftR as alpha without internal planning references. |
 | F-16 | medium | Public readiness scan was ad hoc. | resolved locally | Added `scripts/public_readiness_check.py`. |
 | F-17 | medium | Full gate needed normalized environment. | resolved locally | `scripts/smoke-install.sh` creates a temp venv and installs extras. |
 | F-18 | medium | `.hermes/plans` was untracked and could leak. | resolved locally | `.hermes/` ignored; public-safe summary lives in this report. |

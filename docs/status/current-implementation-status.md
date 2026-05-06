@@ -31,8 +31,8 @@ ShyftR is a local-first alpha MVP for controlled pilots. It is not a hosted SaaS
 | Runtime adapter examples | implemented as fixtures and protocol demos | yes | `shyftr adapter validate/discover/ingest/backfill/sync` | service adapter endpoints | `src/shyftr/integrations/*` | `tests/test_runtime_integration_demo.py`, `tests/test_integration_cli.py` | Examples are synthetic and runtime-neutral. |
 | Trusted memory provider integration | partial | qualified | provider modules and tests only | no hosted provider control plane | `src/shyftr/trusted_memory.py`, `src/shyftr/memory_provider.py` | `tests/test_trusted_memory.py`, `tests/test_memory_provider.py` | Controlled-pilot integration surface; do not imply managed backend replacement for all domains. |
 | Coil/Rail distillation | partial/planned | qualified/no current broad claim | older compatibility modules/tests | no public UI claim | `src/shyftr/alloys.py`, doctrine docs | `tests/test_alloys.py`, `tests/test_doctrine.py` | Treat as future-facing unless directly citing tested local behavior. |
-| Phase 6 multi-cell intelligence | not started | no current-capability claim | none | none | no current implementation surface | no current MVP test evidence | Out of scope for controlled-pilot MVP cleanup. |
+| Distributed multi-cell intelligence | not implemented | no current-capability claim | none | none | no current implementation surface | no current alpha test evidence | Outside the current alpha boundary. |
 
 ## Public wording rule
 
-Use current-tense claims only for implemented rows above. Use future-tense or explicit not-current wording for planned, deferred, and Phase 6 concepts.
+Use current-tense claims only for implemented rows above. Use future-tense or explicit not-current wording for planned and deferred concepts. Public-facing status docs should say alpha plainly rather than referencing internal planning labels.

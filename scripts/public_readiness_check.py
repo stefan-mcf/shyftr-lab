@@ -112,10 +112,11 @@ def main() -> int:
     for banned in BANNED_README:
         if banned in low:
             fail(errors, f"README contains banned phrase: {banned}")
-    if "Phase 6" in readme and "not started" not in readme:
-        fail(errors, "README mentions Phase 6 without not-started boundary")
     if "alpha" not in low:
         fail(errors, "README missing alpha status boundary")
+    for banned_public_planning_term in ["phase", "roadmap"]:
+        if banned_public_planning_term in low:
+            fail(errors, f"README contains internal planning term: {banned_public_planning_term}")
     if "not a hosted saas" not in low or "not a multi-tenant production service" not in low:
         fail(errors, "README missing non-hosted/non-production boundary")
     if "ALPHA_GATE_READY" not in readme:
@@ -129,6 +130,12 @@ def main() -> int:
     for phrase in ["local-first alpha", "synthetic data", "not a hosted saas", "not a multi-tenant production service", "alpha_gate.sh"]:
         if phrase not in alpha_doc:
             fail(errors, f"alpha-readiness doc missing required phrase: {phrase}")
+
+    for rel in ["README.md", "CONTRIBUTING.md", "docs/status/alpha-readiness.md", "docs/status/current-implementation-status.md", "docs/status/public-readiness-audit.md"]:
+        text = (ROOT / rel).read_text(encoding="utf-8").lower()
+        for banned_public_planning_term in ["phase", "roadmap"]:
+            if banned_public_planning_term in text:
+                fail(errors, f"public-facing doc contains internal planning term {banned_public_planning_term}: {rel}")
     tracked = set(run_git("ls-files"))
     if any(p.startswith(".hermes/") for p in tracked):
         fail(errors, ".hermes/ is tracked")

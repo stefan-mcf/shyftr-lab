@@ -6,7 +6,7 @@ Local-first, append-only memory control plane for AI agents.
 
 ShyftR is a local-first alpha / controlled-pilot developer-preview MVP. It is designed for local Cells, synthetic demos, and operator-approved pilots where durable agent memory must stay inspectable, review-gated, and file-backed.
 
-It is not a hosted SaaS product, not a multi-tenant production service, not production-hardened, and not a package release. Phase 6 multi-cell intelligence is not started and is outside the current MVP boundary.
+It is not a hosted SaaS product, not a multi-tenant production service, not production-hardened, and not a package release.
 
 ## Why it exists
 
@@ -35,7 +35,7 @@ See `docs/status/current-implementation-status.md` for the evidence-backed capab
 - Hosted platform operation.
 - Multi-tenant production deployment.
 - Package publishing or release tags without a separate release decision.
-- Phase 6 multi-cell intelligence, federation, or network effects.
+- Distributed intelligence, federation, or network effects.
 - Automatic external runtime control beyond local adapter contracts.
 
 ## Install from clone
