@@ -191,6 +191,7 @@ Result:
 
 Next narrow hardening run:
 
+- Track external alpha tester evidence in GitHub issue #1: https://github.com/stefan-mcf/shyftr/issues/1
 - Send the Wave 1 tester packet to 3-5 technical testers.
 - Before outreach, rerun Wave 0 gates and tell testers to record the exact SHA from `git rev-parse HEAD`.
 - Prefer the GitHub alpha test report template for returned results: `.github/ISSUE_TEMPLATE/alpha_test_report.md`.
