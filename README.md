@@ -19,15 +19,15 @@ See `docs/status/current-implementation-status.md` for the evidence-backed capab
 
 ShyftR is a local memory-cell substrate for agents and agent runtimes:
 
-| Step | What happens | Current public status |
+| Step | What happens |
 |---|---|---|
-| evidence | raw task output, notes, logs, or example material enter an append-only cell ledger | implemented locally |
-| candidate | ShyftR extracts bounded memory proposals from evidence | implemented locally |
-| memory | a reviewer approves a candidate before it becomes durable memory | implemented locally |
-| pack | the regulator assembles a bounded, trust-labeled context bundle for a runtime | implemented locally |
-| feedback | the runtime reports whether the pack helped, harmed, or missed something | implemented locally |
-| confidence | useful memory can gain confidence; harmful, stale, or contradictory memory can be challenged | implemented for local feedback and advisory workflows |
-| pattern and rule | recurring memories can be distilled into higher-order guidance under review gates | partial/planned; keep broad claims qualified |
+| evidence | raw task output, notes, logs, or example material enter an append-only cell ledger |
+| candidate | ShyftR extracts bounded memory proposals from evidence |
+| memory | a reviewer approves a candidate before it becomes durable memory |
+| pack | the regulator assembles a bounded, trust-labeled context bundle for a runtime |
+| feedback | the runtime reports whether the pack helped, harmed, or missed something |
+| confidence | useful memory can gain confidence; harmful, stale, or contradictory memory can be challenged |
+| pattern and rule | recurring memories can be distilled into higher-order guidance under review gates | 
 
 The result is agent memory that stays inspectable. Durable learning remains tied to evidence, review, provenance, and feedback instead of disappearing into opaque profile state.
 
