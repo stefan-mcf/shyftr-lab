@@ -58,6 +58,19 @@ def test_example_task_json_exists_and_parseable() -> None:
     assert "steps" in data
 
 
+def test_phase10_demo_files_exist_and_are_parseable() -> None:
+    """Phase 10 proof files exist and document metrics plus decay surfaces."""
+    closeout = REPO_ROOT / "examples" / "closeout.md"
+    packet = REPO_ROOT / "examples" / "packet.json"
+    demo = REPO_ROOT / "docs" / "demo.md"
+    assert closeout.is_file(), f"Missing: {closeout}"
+    assert "shyftr metrics" in closeout.read_text(encoding="utf-8")
+    packet_data = json.loads(packet.read_text(encoding="utf-8"))
+    assert packet_data["scope"] == "local controlled-pilot demo only"
+    assert "shyftr metrics" in demo.read_text(encoding="utf-8")
+    assert "shyftr decay" in demo.read_text(encoding="utf-8")
+
+
 def test_example_doc_exists() -> None:
     """docs/example-lifecycle.md exists and documents the CLI commands."""
     path = REPO_ROOT / "docs" / "example-lifecycle.md"

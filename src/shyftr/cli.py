@@ -668,6 +668,41 @@ def _add_counters(sub: argparse.ArgumentParser) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: metrics
+# ---------------------------------------------------------------------------
+
+
+def cmd_metrics(args: argparse.Namespace) -> None:
+    from shyftr.metrics import metrics_summary
+
+    _print_json(metrics_summary(args.cell_path))
+
+
+def _add_metrics(sub: argparse.ArgumentParser) -> None:
+    sub.add_argument("cell_path", type=_cell_path, help="path to the Cell directory")
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: decay
+# ---------------------------------------------------------------------------
+
+
+def cmd_decay(args: argparse.Namespace) -> None:
+    from shyftr.decay import cell_decay_report, decay_summary
+
+    _print_json(
+        {
+            "proposal_summary": decay_summary(args.cell_path),
+            "scoring_summary": cell_decay_report(args.cell_path),
+        }
+    )
+
+
+def _add_decay(sub: argparse.ArgumentParser) -> None:
+    sub.add_argument("cell_path", type=_cell_path, help="path to the Cell directory")
+
+
+# ---------------------------------------------------------------------------
 # Subcommand: adapter
 # ---------------------------------------------------------------------------
 
@@ -1300,6 +1335,8 @@ def _resolve_subcommand(args: argparse.Namespace) -> None:
         "proposals": cmd_proposals_export,
         "hygiene": cmd_hygiene,
         "counters": cmd_counters,
+        "metrics": cmd_metrics,
+        "decay": cmd_decay,
         "sweep": cmd_sweep,
         "challenge": cmd_challenge,
         "grid": cmd_grid_status,
@@ -1454,6 +1491,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_import(sub.add_parser("import", help="Review imported federation records"))
     _add_hygiene(sub.add_parser("hygiene", help="Run a hygiene report on a Cell"))
     _add_counters(sub.add_parser("counters", help="Show trace usage counters"))
+    _add_metrics(sub.add_parser("metrics", help="Show local memory effectiveness metrics"))
+    _add_decay(sub.add_parser("decay", help="Show review-gated memory decay scoring and proposal summaries"))
     _add_sweep(sub.add_parser("sweep", help="Run a sweep dry-run analysis"))
     _add_challenge(sub.add_parser("challenge", help="Run a challenger audit loop analysis"))
     _add_grid(sub.add_parser("grid", help="Inspect and rebuild the rebuildable retrieval Grid"))

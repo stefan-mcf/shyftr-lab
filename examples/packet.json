@@ -1,0 +1,21 @@
+{
+  "task_id": "phase10-demo-task",
+  "query": "How should I evaluate whether a memory pack helped?",
+  "steps": [
+    "Initialize a temporary cell.",
+    "Ingest examples/closeout.md as synthetic evidence.",
+    "Extract a candidate and approve it.",
+    "Promote the candidate to memory.",
+    "Assemble a pack for the query.",
+    "Record feedback with useful memory ids.",
+    "Run shyftr metrics and shyftr decay to inspect local proof surfaces."
+  ],
+  "expected_outputs": [
+    "pack_id",
+    "feedback_id",
+    "retrieval_quality.precision_proxy",
+    "cell_health.health_score",
+    "scoring_summary.average_decay_score"
+  ],
+  "scope": "local controlled-pilot demo only"
+}

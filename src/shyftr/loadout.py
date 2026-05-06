@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+from .decay import score_memory_decay
 from .ledger import append_jsonl, read_jsonl
 from .mutations import active_charge_ids
 from .frontier import project_confidence_state
@@ -385,6 +386,7 @@ def _build_candidate_from_trace(record: Dict[str, Any]) -> CandidateItem:
     """
     kind = record.get("kind")
     negative_space_kind = kind if (kind and str(kind).lower() in NEGATIVE_SPACE_KINDS) else None
+    decay_score = score_memory_decay(record).combined
     return CandidateItem(
         item_id=record.get("trace_id", ""),
         cell_id=record.get("cell_id", ""),
@@ -397,6 +399,7 @@ def _build_candidate_from_trace(record: Dict[str, Any]) -> CandidateItem:
         confidence=record.get("confidence"),
         success_count=record.get("success_count", 0),
         failure_count=record.get("failure_count", 0),
+        decay=decay_score,
         negative_space_kind=negative_space_kind,
         related_positive_ids=record.get("related_positive_ids", []),
     )

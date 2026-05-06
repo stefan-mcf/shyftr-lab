@@ -190,6 +190,8 @@ def frontier_review_surfaces(cell_path: PathLike) -> Dict[str, Any]:
 def pilot_metrics(cell_path: PathLike) -> Dict[str, Any]:
     """Compute controlled-pilot usefulness and operator-burden metrics."""
 
+    from .metrics import metrics_summary
+
     cell = Path(cell_path)
     retrieval_logs = _records(cell / "ledger" / "retrieval_logs.jsonl")
     diagnostics = _records(cell / "ledger" / "diagnostic_logs.jsonl")
@@ -198,7 +200,7 @@ def pilot_metrics(cell_path: PathLike) -> Dict[str, Any]:
     proposals = proposal_inbox(cell)["proposals"]
     sparks = spark_review_queue(cell)["sparks"]
 
-    total_selected = sum(len(r.get("trace_ids", []) or r.get("selected_charge_ids", []) or []) for r in retrieval_logs)
+    total_selected = sum(len(r.get("selected_ids", []) or r.get("trace_ids", []) or r.get("selected_charge_ids", []) or []) for r in retrieval_logs)
     if not total_selected:
         total_selected = sum(len(d.get("selected_charge_ids", [])) for d in diagnostics if d.get("operation") in {"pack", "provider_pack"})
 
@@ -216,11 +218,12 @@ def pilot_metrics(cell_path: PathLike) -> Dict[str, Any]:
     def rate(n: int, d: int) -> float:
         return round(n / d, 4) if d else 0.0
 
+    phase10 = metrics_summary(cell)
     metrics = {
         "pack_count": len(retrieval_logs) or len([d for d in diagnostics if d.get("operation") in {"pack", "provider_pack"}]),
         "feedback_count": len(outcomes),
         "pack_application_rate": rate(applied, total_selected),
-        "useful_memory_rate": rate(useful, total_selected),
+        "useful_memory_rate": phase10["retrieval_quality"]["precision_proxy"],
         "harmful_memory_rate": rate(harmful, total_selected),
         "ignored_memory_rate": rate(ignored, total_selected),
         "over_retrieval_rate": rate(max(total_selected - applied - ignored, 0), total_selected),
@@ -236,7 +239,12 @@ def pilot_metrics(cell_path: PathLike) -> Dict[str, Any]:
         "rejected_item_ratio": rate(len(rejected_reviews), len(reviews)),
         "review_pressure_score": review_pressure,
     }
-    return {"status": "ok", "metrics": metrics, "can_answer_improvement": bool(outcomes and total_selected)}
+    return {
+        "status": "ok",
+        "metrics": metrics,
+        "phase10_metrics": phase10,
+        "can_answer_improvement": bool(outcomes and total_selected),
+    }
 
 
 def pilot_metrics_csv(cell_path: PathLike) -> str:

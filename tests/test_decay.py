@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from shyftr.decay import append_deprecation_proposals, decay_summary, propose_deprecations
+from shyftr.decay import (
+    append_deprecation_proposals,
+    cell_decay_report,
+    decay_summary,
+    propose_deprecations,
+    score_memory_decay,
+)
 from shyftr.layout import init_cell
 from shyftr.ledger import append_jsonl
 from shyftr.models import Fragment, Trace
@@ -115,3 +121,52 @@ def test_decay_summary_counts_reasons(tmp_path: Path) -> None:
     assert summary["total_deprecation_proposals"] == 2
     assert summary["stale_count"] == 1
     assert summary["unsupported_count"] == 1
+
+
+def test_score_memory_decay_combines_age_failure_confidence_and_supersession() -> None:
+    score = score_memory_decay(
+        {
+            "trace_id": "old-bad",
+            "created_at": "2025-05-06T00:00:00+00:00",
+            "success_count": 1,
+            "failure_count": 3,
+            "confidence": 0.2,
+        },
+        reference_time="2026-05-06T00:00:00+00:00",
+        half_life_days=90,
+        superseded_ids={"old-bad"},
+    )
+
+    assert score.memory_id == "old-bad"
+    assert score.age_decay > 0.9
+    assert score.failure_decay == 0.75
+    assert score.confidence_decay == 0.8
+    assert score.supersession_decay == 1.0
+    assert score.combined > 0.8
+    assert set(score.reasons) == {"stale", "failed_reuse", "low_confidence", "superseded"}
+
+
+def test_cell_decay_report_is_read_only_and_explainable(tmp_path: Path) -> None:
+    cell = _cell(tmp_path)
+    append_jsonl(
+        cell / "traces" / "approved.jsonl",
+        {
+            **_trace("old", "same", ["f1"], use_count=4, success_count=1, failure_count=3, confidence=0.2).to_dict(),
+            "created_at": "2025-05-06T00:00:00+00:00",
+        },
+    )
+    append_jsonl(
+        cell / "traces" / "approved.jsonl",
+        {
+            **_trace("new", "same", ["f1"], use_count=2, success_count=2, failure_count=0, confidence=0.9).to_dict(),
+            "created_at": "2026-05-01T00:00:00+00:00",
+        },
+    )
+    before = (cell / "traces" / "approved.jsonl").read_text()
+
+    report = cell_decay_report(cell, reference_time="2026-05-06T00:00:00+00:00")
+
+    assert report["memory_count"] == 2
+    assert report["high_decay_count"] >= 1
+    assert "scores" in report
+    assert (cell / "traces" / "approved.jsonl").read_text() == before

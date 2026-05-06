@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timezone
+import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -13,6 +15,117 @@ JsonRecord = Dict[str, Any]
 
 DEFAULT_MIN_USES_FOR_FAILURE_RATE = 3
 DEFAULT_LOW_SUCCESS_RATE = 0.30
+DEFAULT_DECAY_HALF_LIFE_DAYS = 90
+
+
+@dataclass(frozen=True)
+class DecayScore:
+    """Explainable local decay score for an approved memory record.
+
+    Scores are normalized to 0.0-1.0. They are retrieval signals and review
+    evidence only; they do not mutate memory ledgers.
+    """
+
+    memory_id: str
+    age_decay: float
+    failure_decay: float
+    confidence_decay: float
+    supersession_decay: float
+    combined: float
+    reasons: List[str]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "memory_id": self.memory_id,
+            "age_decay": self.age_decay,
+            "failure_decay": self.failure_decay,
+            "confidence_decay": self.confidence_decay,
+            "supersession_decay": self.supersession_decay,
+            "combined": self.combined,
+            "reasons": list(self.reasons),
+        }
+
+
+def score_memory_decay(
+    memory: JsonRecord,
+    *,
+    reference_time: Optional[str] = None,
+    half_life_days: int = DEFAULT_DECAY_HALF_LIFE_DAYS,
+    superseded_ids: Optional[set[str]] = None,
+) -> DecayScore:
+    """Return an explainable decay score without writing any ledger rows.
+
+    The score combines transparent public-safe factors: age, failed reuse,
+    low confidence, and supersession. It intentionally avoids private ranking
+    heuristics and does not deprecate anything automatically.
+    """
+    memory_id = str(memory.get("trace_id") or memory.get("memory_id") or "")
+    reference = _parse_time(reference_time) or datetime.now(timezone.utc)
+    age_decay = _age_decay(memory, reference=reference, half_life_days=half_life_days)
+    failure_decay = _failure_decay(memory)
+    confidence_decay = _confidence_decay(memory)
+    supersession_decay = 1.0 if memory_id and superseded_ids and memory_id in superseded_ids else 0.0
+
+    combined = _clamp01(
+        (0.35 * age_decay)
+        + (0.30 * failure_decay)
+        + (0.20 * confidence_decay)
+        + (0.15 * supersession_decay)
+    )
+    reasons: List[str] = []
+    if age_decay >= 0.5:
+        reasons.append("stale")
+    if failure_decay >= 0.5:
+        reasons.append("failed_reuse")
+    if confidence_decay >= 0.5:
+        reasons.append("low_confidence")
+    if supersession_decay > 0:
+        reasons.append("superseded")
+    return DecayScore(
+        memory_id=memory_id,
+        age_decay=round(age_decay, 4),
+        failure_decay=round(failure_decay, 4),
+        confidence_decay=round(confidence_decay, 4),
+        supersession_decay=round(supersession_decay, 4),
+        combined=round(combined, 4),
+        reasons=reasons,
+    )
+
+
+def cell_decay_report(
+    cell_path: PathLike,
+    *,
+    reference_time: Optional[str] = None,
+    half_life_days: int = DEFAULT_DECAY_HALF_LIFE_DAYS,
+) -> Dict[str, Any]:
+    """Return aggregate decay scoring for a Cell."""
+    memories = _read_records(Path(cell_path) / "traces" / "approved.jsonl")
+    superseded_ids = _superseded_trace_ids(memories)
+    scores = [
+        score_memory_decay(
+            memory,
+            reference_time=reference_time,
+            half_life_days=half_life_days,
+            superseded_ids=superseded_ids,
+        ).to_dict()
+        for memory in memories
+    ]
+    reason_counts: Counter[str] = Counter()
+    for score in scores:
+        reason_counts.update(score.get("reasons", []))
+    average = round(sum(float(score["combined"]) for score in scores) / len(scores), 4) if scores else 0.0
+    high = [score for score in scores if float(score["combined"]) >= 0.6]
+    return {
+        "memory_count": len(memories),
+        "average_decay_score": average,
+        "high_decay_count": len(high),
+        "reason_counts": {key: reason_counts[key] for key in sorted(reason_counts)},
+        "scores": scores,
+        "notes": [
+            "decay scoring is a transparent retrieval signal and review aid",
+            "deprecation remains proposal-only and review-gated",
+        ],
+    }
 
 
 def propose_deprecations(
@@ -123,6 +236,52 @@ def decay_summary(cell_path: PathLike) -> Dict[str, Any]:
         "superseded_count": counts.get("superseded", 0),
         "unsupported_count": counts.get("unsupported", 0),
     }
+
+
+def _parse_time(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _age_decay(memory: JsonRecord, *, reference: datetime, half_life_days: int) -> float:
+    if half_life_days <= 0:
+        return 0.0
+    timestamp = None
+    for key in ("last_used_at", "last_retrieved_at", "promoted_at", "created_at", "observed_at"):
+        timestamp = _parse_time(memory.get(key))
+        if timestamp is not None:
+            break
+    if timestamp is None:
+        return 0.0
+    age_days = max(0.0, (reference - timestamp).total_seconds() / 86400.0)
+    return _clamp01(1.0 - math.exp(-math.log(2) * age_days / half_life_days))
+
+
+def _failure_decay(memory: JsonRecord) -> float:
+    success_count = int(memory.get("success_count") or 0)
+    failure_count = int(memory.get("failure_count") or 0)
+    total = success_count + failure_count
+    if total <= 0:
+        return 0.0
+    return _clamp01(failure_count / total)
+
+
+def _confidence_decay(memory: JsonRecord) -> float:
+    confidence = memory.get("confidence")
+    if not isinstance(confidence, (int, float)):
+        return 0.0
+    return _clamp01(1.0 - float(confidence))
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
 
 
 def _read_records(path: PathLike) -> List[JsonRecord]:
