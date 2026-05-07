@@ -1,6 +1,6 @@
 # ShyftR v1 local HTTP API versioning
 
-Status: Phase 8 public-safe API contract note.
+Status: productization track public-safe API contract note.
 
 The local HTTP service exposes the public integration surface under `/v1`. Unversioned routes remain as compatibility aliases and return deprecation headers. New external integrations should use `/v1/*` paths.
 
@@ -34,4 +34,4 @@ Unversioned compatibility aliases additionally include:
 
 ## Safety posture
 
-The v1 API is local-first and local-reviewed oriented. It is not a hosted SaaS API, multi-tenant API, or production service safety boundary. Canonical truth remains append-only cell ledgers; the service is a local adapter surface.
+The v1 API is local-first and local-reviewed oriented. It is not a hosted hosted platform API, multi-tenant API, or production service safety boundary. Canonical truth remains append-only cell ledgers; the service is a local adapter surface.

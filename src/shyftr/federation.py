@@ -12,7 +12,7 @@ from .privacy import AccessPolicy, is_charge_export_allowed, redact_charge_proje
 
 PathLike = Union[str, Path]
 TRUST_LABELS = {"local", "imported", "federated", "verified"}
-SCHEMA_VERSION = "phase6.federation.v1"
+SCHEMA_VERSION = "federation.v1"
 
 
 def _now() -> str:

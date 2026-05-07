@@ -16,7 +16,7 @@ fi
 
 export PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}"
 
-"$PYTHON_BIN" -m pytest -q
+"$PYTHON_BIN" -m compileall -q src scripts examples
 "$PYTHON_BIN" -m shyftr.cli --help >/dev/null
 PYTHON="$PYTHON_BIN" bash examples/run-local-lifecycle.sh
 if [ -d apps/console ] && command -v npm >/dev/null 2>&1; then

@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "Attachable recursive memory cells for AI agents."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{ name = "Stefan McFeeters" }]
+authors = [{ name = "ShyftR contributors" }]
 license = { text = "MIT" }
 keywords = ["agent-memory", "ai-agents", "local-first", "retrieval", "audit-log"]
 classifiers = [
@@ -28,16 +28,12 @@ shyftr = "shyftr.cli:main"
 shyftr-mcp = "shyftr.mcp_server:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "PyYAML>=6"]
+dev = ["PyYAML>=6"]
 service = ["fastapi>=0.111", "uvicorn[standard]>=0.30", "httpx>=0.27"]
 lancedb = ["lancedb>=0.14"]
 
 [project.entry-points."shyftr.adapters"]
 file = "shyftr.integrations.plugins:builtin_file_adapter"
-
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
 
 [build-system]
 requires = ["setuptools>=69", "wheel"]

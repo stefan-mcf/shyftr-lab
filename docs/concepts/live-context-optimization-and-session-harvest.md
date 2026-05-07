@@ -134,7 +134,7 @@ The continuity cell should be extended to understand harvest results, but the li
 | off | no live capture or harvest |
 | shadow | capture and classify, but do not export packs or write durable memory |
 | advisory | export bounded packs and write review-gated proposals |
-| managed | reserved for a later operator-gated tranche |
+| managed | reserved for a later operator-gated work slice |
 
 ## safety rules
 

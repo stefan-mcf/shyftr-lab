@@ -1,7 +1,7 @@
-# ShyftR Phase 10 local evaluation demo
+# ShyftR local evaluation track local evaluation demo
 
 This demo shows a public-safe, local-only closeout-to-memory-to-pack flow with
-Phase 10 evaluation surfaces. It uses synthetic evidence and append-only cell
+local evaluation track evaluation surfaces. It uses synthetic evidence and append-only cell
 ledgers. It does not require a hosted service, production account, external
 judge, package release, or private scoring logic.
 
@@ -21,9 +21,9 @@ judge, package release, or private scoring logic.
 Run from the repository root with `PYTHONPATH=src`:
 
 ```bash
-CELL=/tmp/shyftr-phase10-demo-cell
+CELL=/tmp/shyftr-evaluation-demo-cell
 rm -rf "$CELL"
-PYTHONPATH=src python -m shyftr.cli init-cell "$CELL" --cell-id phase10-demo --cell-type domain
+PYTHONPATH=src python -m shyftr.cli init-cell "$CELL" --cell-id evaluation-demo --cell-type domain
 PYTHONPATH=src python -m shyftr.cli ingest "$CELL" examples/closeout.md --kind closeout
 ```
 
@@ -48,15 +48,15 @@ PYTHONPATH=src python -m shyftr.cli promote "$CELL" <candidate_id> \
 Assemble a pack and record feedback:
 
 ```bash
-PYTHONPATH=src python -m shyftr.cli pack "$CELL" "evaluate memory pack usefulness" --task-id phase10-demo-task
+PYTHONPATH=src python -m shyftr.cli pack "$CELL" "evaluate memory pack usefulness" --task-id evaluation-demo-task
 
 PYTHONPATH=src python -m shyftr.cli feedback "$CELL" <pack_id> success \
   --applied <memory_id> \
   --useful <memory_id> \
-  --verification '{"demo":"phase10-local"}'
+  --verification '{"demo":"evaluation-local"}'
 ```
 
-Inspect Phase 10 proof surfaces:
+Inspect local evaluation track proof surfaces:
 
 ```bash
 PYTHONPATH=src python -m shyftr.cli metrics "$CELL"

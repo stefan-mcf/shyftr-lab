@@ -86,7 +86,7 @@ These capabilities may attach as optional modules, adapters, or projection surfa
 
 ## Implementation implications
 
-Future implementation tranches should stay small and contract-first:
+Future implementation work slices should stay small and contract-first:
 
 1. Define the compatibility contract.
 2. Add ShyftR-native data models or APIs.

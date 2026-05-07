@@ -248,7 +248,7 @@ Current boundaries:
 
 - UMS-1 covers the direct provider API and local lexical search/profile projection path.
 - UMS-2 covers the trusted explicit-memory path, required metadata, narrow trusted kinds, regulator pollution protection, and the direct-promotion disable switch.
-- `pack`, `record_feedback`, `import_memory_export`, and `export_memory_snapshot` remain contract items for later tranches.
+- `pack`, `record_feedback`, `import_memory_export`, and `export_memory_snapshot` remain contract items for later work slices.
 - Lifecycle semantics are provider-local until UMS-4 adds broader status, supersession, deprecation, quarantine, conflict, and redaction event models.
 - Provider outputs remain ShyftR-native and category-level; adapters can map external categories into this surface without making any external provider canonical.
 

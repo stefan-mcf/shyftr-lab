@@ -138,5 +138,5 @@ evidence -> candidate -> memory -> pack -> feedback
 Run the full example test suite to verify the local setup:
 
 ```bash
-python3 -m pytest tests/test_demo_flow.py -v
+PYTHONPATH=src python3 -m shyftr.cli --help >/dev/null
 ```

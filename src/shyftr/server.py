@@ -689,7 +689,7 @@ def _register_routes(app: FastAPI) -> None:
             return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
 
 
-    # -- Phase 6 explicit multi-cell surfaces -------------------------------
+    # -- multi-cell milestone explicit multi-cell surfaces -------------------------------
 
     @app.get("/registry/cells")
     async def registry_cells(registry: str, cell_type: Optional[str] = None, tag: Optional[str] = None) -> Dict[str, Any]:

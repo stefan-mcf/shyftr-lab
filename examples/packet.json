@@ -1,5 +1,5 @@
 {
-  "task_id": "phase10-demo-task",
+  "task_id": "evaluation-demo-task",
   "query": "How should I evaluate whether a memory pack helped?",
   "steps": [
     "Initialize a temporary cell.",

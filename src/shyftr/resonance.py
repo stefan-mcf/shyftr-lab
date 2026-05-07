@@ -240,7 +240,7 @@ def get_high_resonance_alloys(
 
 
 # ---------------------------------------------------------------------------
-# Phase 6 public-model, registry-scoped resonance helpers
+# multi-cell milestone public-model, registry-scoped resonance helpers
 # ---------------------------------------------------------------------------
 from dataclasses import asdict as _asdict
 from datetime import datetime as _datetime, timezone as _timezone

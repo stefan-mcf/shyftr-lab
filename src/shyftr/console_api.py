@@ -218,12 +218,12 @@ def pilot_metrics(cell_path: PathLike) -> Dict[str, Any]:
     def rate(n: int, d: int) -> float:
         return round(n / d, 4) if d else 0.0
 
-    phase10 = metrics_summary(cell)
+    evaluation = metrics_summary(cell)
     metrics = {
         "pack_count": len(retrieval_logs) or len([d for d in diagnostics if d.get("operation") in {"pack", "provider_pack"}]),
         "feedback_count": len(outcomes),
         "pack_application_rate": rate(applied, total_selected),
-        "useful_memory_rate": phase10["retrieval_quality"]["precision_proxy"],
+        "useful_memory_rate": evaluation["retrieval_quality"]["precision_proxy"],
         "harmful_memory_rate": rate(harmful, total_selected),
         "ignored_memory_rate": rate(ignored, total_selected),
         "over_retrieval_rate": rate(max(total_selected - applied - ignored, 0), total_selected),
@@ -242,7 +242,7 @@ def pilot_metrics(cell_path: PathLike) -> Dict[str, Any]:
     return {
         "status": "ok",
         "metrics": metrics,
-        "phase10_metrics": phase10,
+        "evaluation_metrics": evaluation,
         "can_answer_improvement": bool(outcomes and total_selected),
     }
 
@@ -283,7 +283,7 @@ def policy_tuning_report(cell_path: PathLike) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Phase 6 multi-cell console projections
+# multi-cell milestone multi-cell console projections
 # ---------------------------------------------------------------------------
 
 def registered_cells(registry_path: PathLike, *, cell_type: Optional[str] = None, tag: Optional[str] = None) -> Dict[str, Any]:

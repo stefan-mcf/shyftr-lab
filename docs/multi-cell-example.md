@@ -1,6 +1,6 @@
 # Multi-cell example
 
-This public-safe example demonstrates Phase 6 behavior with synthetic cells only.
+This public-safe example demonstrates multi-cell milestone behavior with synthetic cells only.
 
 ## Scenario
 
@@ -23,8 +23,8 @@ python -m shyftr.cli cell register --registry examples/multi-cell/registry.jsonl
 python -m shyftr.cli resonance scan --registry examples/multi-cell/registry.jsonl --cell project-alpha --cell project-beta --dry-run
 ```
 
-The test-backed demonstration is `tests/test_multi_cell_demo.py`. It creates temporary synthetic cells, proves registry-scoped resonance, review-gated shared rules, selective export, imported trust labels, and review before pack inclusion.
+The public-safe demonstration creates temporary synthetic cells and documents registry-scoped resonance, review-gated shared rules, selective export, imported trust labels, and review before pack inclusion.
 
 ## Safety notes
 
-Default pack/search behavior remains single-cell. Cross-cell behavior requires explicit registry and cell selection. Imported or federated records are not local truth until reviewed. Phase 7 behavior is not part of this example.
+Default pack/search behavior remains single-cell. Cross-cell behavior requires explicit registry and cell selection. Imported or federated records are not local truth until reviewed. frontier foundations track behavior is not part of this example.

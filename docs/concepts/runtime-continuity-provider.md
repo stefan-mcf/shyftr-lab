@@ -46,7 +46,7 @@ Supported modes:
 
 Reserved mode:
 
-- authority: reserved for a later operator-gated tranche
+- authority: reserved for a later operator-gated work slice
 
 ## command examples
 

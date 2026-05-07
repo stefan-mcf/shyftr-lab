@@ -1,12 +1,12 @@
 # Desktop shell plan
 
-Status: Phase 8.4 is deferred until operator review accepts packaging scope.
+Status: desktop-shell packaging work is deferred until operator review accepts packaging scope.
 
 The desktop shell should be a thin local wrapper around the existing web console and `shyftr serve`. It must not replace the CLI, HTTP API, or web console.
 
 ## Recommended approach
 
-- Target Tauri v2 when this tranche starts.
+- Target Tauri v2 when this work slice starts.
 - Keep the React/Vite console standalone-capable.
 - Use the desktop wrapper for native folder selection, local service lifecycle, tray/status UI, and first-run checks only.
 - Do not bundle Python in the alpha shell; require Python 3.11+ and show clear install instructions.

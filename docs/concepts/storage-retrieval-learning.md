@@ -263,5 +263,5 @@ channel, and creation time; trusted writes still pass regulator pollution checks
 and promotion remains provenance-linked through evidence, candidate,
 review, promotion, memory, and memory rows. ShyftR does not move canonical truth
 into profile text, search indexes, trusted-call metadata, or external runtime
-state. Later UMS tranches cover profile projection hardening, lifecycle
+state. Later UMS work slices cover profile projection hardening, lifecycle
 semantics, pack and feedback wrappers, and import/export compatibility.

@@ -156,7 +156,7 @@ def distill_doctrine(
 
 
 # ---------------------------------------------------------------------------
-# Phase 6 public shared-rule proposal workflow
+# multi-cell milestone public shared-rule proposal workflow
 # ---------------------------------------------------------------------------
 from datetime import datetime as _datetime, timezone as _timezone
 from uuid import uuid4 as _uuid4

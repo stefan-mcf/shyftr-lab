@@ -721,7 +721,7 @@ def _add_proposals(sub: argparse.ArgumentParser) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Subcommand: cell / resonance / rule / import (Phase 6)
+# Subcommand: cell / resonance / rule / import (multi-cell milestone)
 # ---------------------------------------------------------------------------
 
 

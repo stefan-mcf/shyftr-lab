@@ -13,7 +13,7 @@ ShyftR gives agents memory that can prove where it came from, whether it helped,
 
 ShyftR is a stable local-first product line for developer-operated agent memory. The supported path is clone, install, run local cells, and use synthetic or operator-approved non-sensitive data. Hosted platform operation, multi-tenant deployment, package publication, and broad managed-memory replacement claims remain outside the current public release.
 
-See `docs/status/current-implementation-status.md` for the evidence-backed capability matrix and `docs/status/release-readiness.md` for the release gate.
+The public surface is intentionally compact: product docs, concepts, API/console references, examples, tests, and release gates are tracked; local planning, status ledgers, runbooks, research notes, and operator notes are kept out of the public clone.
 
 ## What ShyftR does
 
@@ -87,7 +87,7 @@ The public release supports:
 - runtime-neutral adapter examples and synthetic fixtures;
 - public readiness and release gate scripts.
 
-The public release uses synthetic examples by default. Use operator-approved non-sensitive data only after reviewing `SECURITY.md` and `docs/status/release-readiness.md`.
+The public release uses synthetic examples by default. Use operator-approved non-sensitive data only after reviewing `SECURITY.md` and the out-of-scope boundaries in this README.
 
 ## What is deliberately out of scope
 
@@ -101,7 +101,7 @@ The current public release excludes:
 - automatic external runtime control beyond local adapter contracts;
 - unreviewed sensitive, customer, employer, or regulated memory.
 
-Future capabilities can expand after implementation evidence, tests, public status updates, and review gates. Treat this repository as the stable local-first proof and operating surface for ShyftR cells.
+Future capabilities can expand after implementation evidence, tests, public updates, and review gates. Treat this repository as the stable local-first proof and operating surface for ShyftR cells.
 
 ## Install from clone
 
@@ -175,7 +175,7 @@ Use throwaway cells for experiments. Do not point tests at production memory led
 - Sensitive or regulated data requires explicit operator approval before use.
 - Hosted or multi-tenant deployments require a separate deployment and security review.
 
-See `SECURITY.md`, `docs/status/release-readiness.md`, and `docs/concepts/storage-retrieval-learning.md` for the detailed release scope.
+See `SECURITY.md` and `docs/concepts/storage-retrieval-learning.md` for the detailed release scope.
 
 ## Architecture
 
@@ -199,21 +199,22 @@ agent or runtime
 
 ## Documentation
 
-- `docs/status/current-implementation-status.md` — implemented capability matrix.
-- `docs/status/release-readiness.md` — supported audience, release gate, and data boundaries.
-- `docs/status/public-readiness-audit.md` — public-repository readiness evidence.
 - `docs/development.md` — local development and verification commands.
 - `docs/api.md` — optional local HTTP API reference.
+- `docs/api-versioning.md` — stable `/v1` API compatibility contract.
 - `docs/console.md` — local console guide.
+- `docs/concepts/cells.md` — cell model and boundaries.
 - `docs/concepts/storage-retrieval-learning.md` — ledger/grid/pack/feedback model.
+- `docs/concepts/implementation-guardrails.md` — implementation and public/private boundaries.
 - `docs/runtime-integration-example.md` — runtime-neutral adapter example.
 - `docs/skills.md` — project-bundled Hermes skill for ShyftR operators.
+- `docs/future-work.md` — public future-work notes.
 - `examples/README.md` — runnable synthetic examples.
 
 ## Development checks
 
 ```bash
-python -m pytest -q
+python -m compileall -q src scripts examples
 python scripts/terminology_inventory.py --fail-on-public-stale
 python scripts/terminology_inventory.py --fail-on-capitalized-prose
 python scripts/public_readiness_check.py

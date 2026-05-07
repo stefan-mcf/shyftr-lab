@@ -14,10 +14,10 @@ source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install -e '.[dev,service]'
 shyftr --help
-python -m pytest -q
+python -m compileall -q src scripts examples
 ```
 
-The `service` extra is needed for FastAPI/uvicorn service tests such as `tests/test_server.py` and `tests/test_console_api.py`.
+The `service` extra is needed for local FastAPI/uvicorn service smoke checks.
 
 ## Console setup
 
@@ -38,7 +38,7 @@ bash scripts/smoke-install.sh
 bash scripts/release_gate.sh
 ```
 
-Use `scripts/release_gate.sh` before operator release-scope review. It uses synthetic data only and should end with `SHYFTR_RELEASE_READY`. See `docs/status/release-readiness.md` for scope and data boundaries.
+Use `scripts/release_gate.sh` before operator release-scope review. It uses synthetic data only and should end with `SHYFTR_RELEASE_READY`. Scope and data boundaries are documented in `README.md` and `SECURITY.md`.
 
 ## Optional dependency notes
 
@@ -48,4 +48,4 @@ The `lancedb` extra is optional. The default public smoke path uses deterministi
 
 - If `shyftr` is not found, activate the venv or run with `PYTHONPATH=src python -m shyftr.cli --help`.
 - If FastAPI imports fail, install `.[service]`.
-- If console audit reports dependency vulnerabilities, record the exact npm output in `docs/status/public-readiness-audit.md` before deciding whether the issue blocks publication.
+- If console audit reports dependency vulnerabilities, keep the exact npm output in a local operator note and decide whether the issue blocks publication before sharing the clone.

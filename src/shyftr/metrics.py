@@ -166,7 +166,7 @@ def cell_health_metrics(cell_path: PathLike) -> Dict[str, Any]:
 
 
 def metrics_summary(cell_path: PathLike) -> Dict[str, Any]:
-    """Return the complete Phase 10 metrics summary for a Cell."""
+    """Return the complete local evaluation track metrics summary for a Cell."""
     return {
         "retrieval_quality": retrieval_quality_metrics(cell_path),
         "effectiveness": memory_effectiveness_metrics(cell_path),

@@ -11,8 +11,8 @@ All examples are synthetic and local-only. They are safe fixtures for learning t
 | `examples/run-local-lifecycle.sh` | End-to-end local lifecycle using a temp cell. | README quickstart, CI smoke, `scripts/check.sh`. |
 | `examples/integrations/runtime-adapter.yaml` | Runtime-neutral adapter config fixture. | Adapter validation examples. |
 | `examples/integrations/task-request.json` | Runtime-neutral pack request fixture. | Integration docs/tests. |
-| `examples/integrations/feedback-report.json` | Runtime-neutral feedback report fixture. | Integration docs/tests. |
-| `examples/integrations/worker-runtime/**` | Richer synthetic worker-runtime fixture. | `tests/test_runtime_integration_demo.py`. |
+| `examples/integrations/feedback-report.json` | Runtime-neutral feedback report fixture. | Integration docs. |
+| `examples/integrations/worker-runtime/**` | Richer synthetic worker-runtime fixture. | Runtime integration docs. |
 
 ## Run the local lifecycle
 

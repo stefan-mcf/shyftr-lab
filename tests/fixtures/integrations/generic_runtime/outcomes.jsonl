@@ -1,4 +1,0 @@
-{"loadout_id":"ld-001","task_id":"task-42","verdict":"success","score":0.92,"trace_ids":["tr-001","tr-003"],"external_run_id":"run-alpha","observed_at":"2025-04-24T10:00:35Z"}
-{"loadout_id":"ld-001","task_id":"task-43","verdict":"failure","score":0.0,"trace_ids":["tr-002"],"error":"timeout after 30s","external_run_id":"run-alpha","observed_at":"2025-04-24T10:01:00Z"}
-{"loadout_id":"ld-001","task_id":"task-43","verdict":"success","score":0.88,"trace_ids":["tr-002","tr-005"],"external_run_id":"run-alpha","observed_at":"2025-04-24T10:01:55Z"}
-{"loadout_id":"ld-002","task_id":"task-44","verdict":"partial","score":0.65,"trace_ids":["tr-004"],"notes":"retrieved only 2 of 4 relevant traces","external_run_id":"run-beta","observed_at":"2025-04-24T10:05:00Z"}

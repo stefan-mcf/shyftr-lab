@@ -12,4 +12,4 @@ labels: enhancement
 
 ## Scope boundary
 
-Confirm whether this touches Phase 6, hosted service behavior, external runtimes, or public claims.
+Confirm whether this touches multi-cell milestone, hosted service behavior, external runtimes, or public claims.

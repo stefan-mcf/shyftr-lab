@@ -1,6 +1,6 @@
 # Frontier public-safe example
 
-This example uses synthetic data only. It demonstrates the implemented frontier local controlled-pilot surfaces without private memory data or private-core algorithms.
+This example uses synthetic data only. It demonstrates the implemented frontier local local-reviewed surfaces without private memory data or private-core algorithms.
 
 ## 1. Create a local cell
 

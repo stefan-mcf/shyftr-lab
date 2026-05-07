@@ -61,7 +61,7 @@ The fixture includes all four feedbacks required for a useful learning loop:
 - recovery pattern: timeout window increased after repeated evidence;
 - caution: ShyftR emits reviewable evidence rather than mutating runtime policy.
 
-The accompanying test `tests/test_runtime_integration_demo.py` proves the example
+The accompanying synthetic fixture demonstrates the example
 end to end without any product-specific runtime dependency.
 
 ## 7. Local HTTP service (optional)

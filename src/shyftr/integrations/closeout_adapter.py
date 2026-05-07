@@ -1,4 +1,4 @@
-"""Closeout artifact adapter for Phase 9 public-safe integrations.
+"""Closeout artifact adapter for integration adapters track public-safe integrations.
 
 External runtimes can write closeout artifacts first, then ask ShyftR to ingest
 those artifacts through this SourceAdapter. The adapter never edits the source

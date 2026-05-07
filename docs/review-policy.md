@@ -42,7 +42,7 @@ When a compatibility reader accepts older field names, the public-facing output 
 Run the smallest relevant focused tests first, then the public gate bundle before merge or release-scope handoff:
 
 ```bash
-python -m pytest -q
+python -m compileall -q src scripts examples
 python scripts/terminology_inventory.py --fail-on-public-stale
 python scripts/terminology_inventory.py --fail-on-capitalized-prose
 python scripts/public_readiness_check.py

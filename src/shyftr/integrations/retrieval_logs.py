@@ -1,7 +1,7 @@
 """Public-safe retrieval usage log contract for runtime clients.
 
 This module exposes bounded reads of ``ledger/retrieval_logs.jsonl`` so generic
-clients can audit pack/loadout usage without starting Phase 10 effectiveness
+clients can audit pack/loadout usage without starting local evaluation track effectiveness
 metrics or leaking raw operational state.
 """
 

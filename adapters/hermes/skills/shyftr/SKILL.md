@@ -15,17 +15,17 @@ metadata:
 
 ## Overview
 
-ShyftR is a local-first, ledger-backed memory-cell substrate for AI agents and agent runtimes. The canonical checkout is `/Users/stefan/ShyftR`.
+ShyftR is a local-first, ledger-backed memory-cell substrate for AI agents and agent runtimes. Use the repository root as the working directory for repo-local commands.
 
-Use this skill as a compact operating guide, not as a duplicate of the repository documentation. Repo files are operational truth. Inspect the current checkout before making capability, phase, release, or roadmap claims.
+Use this skill as a compact operating guide, not as a duplicate of the repository documentation. Repo files are operational truth. Inspect the current checkout before making capability, release, or future-work claims.
 
 This skill covers ShyftR repo work, Hermes integration, MCP/CLI surfaces, cells, packs, feedback, carry/continuity, live context, public/private boundaries, and verification.
 
 ## When to Use
 
 Use when:
-- working in `/Users/stefan/ShyftR`;
-- answering ShyftR capability, release, roadmap, architecture, or current-status questions;
+- working in a ShyftR checkout;
+- answering ShyftR capability, release, architecture, or current-status questions;
 - editing ShyftR docs, status artifacts, examples, tests, MCP, CLI, provider, cells, packs, feedback, carry/continuity, or live context logic;
 - using ShyftR MCP tools from Hermes;
 - writing or syncing the project-bundled ShyftR Hermes skill;
@@ -43,20 +43,20 @@ Before acting, choose the current source file for the question:
 
 | Need | Read first |
 |---|---|
-| Product overview/current claim posture | `README.md`, `docs/status/current-implementation-status.md` |
+| Product overview/current claim posture | `README.md`, `docs/future-work.md` |
 | Cell model | `docs/concepts/cells.md` |
 | Ledger/grid/pack/feedback | `docs/concepts/storage-retrieval-learning.md` |
-| Public/private and implementation guardrails | `docs/concepts/implementation-guardrails.md`, `docs/status/release-readiness.md` |
+| Public/private and implementation guardrails | `docs/concepts/implementation-guardrails.md`, `SECURITY.md` |
 | Runtime contracts | `docs/concepts/runtime-integration-contract.md` |
 | Carry/continuity | `docs/concepts/runtime-continuity-provider.md`, `src/shyftr/continuity.py` |
 | Live context/session harvest | `docs/concepts/live-context-optimization-and-session-harvest.md`, `src/shyftr/live_context.py` |
 | MCP tools | `docs/mcp.md`, `src/shyftr/mcp_server.py` |
 | CLI commands | `src/shyftr/cli.py`, `docs/runtime-context-optimization-example.md` |
-| Implementation evidence | `docs/status/current-implementation-status.md` |
-| Plans/future work | `docs/plans/` plus current status docs; do not invent phases |
+| Implementation evidence | `README.md`, tests, and release gates |
+| Future work | `docs/future-work.md`; local-only planning/status artifacts are intentionally ignored |
 | Skill packaging | `adapters/hermes/skills/shyftr/SKILL.md`, `docs/skills.md` |
 
-Rule: if a claim can be verified from the repo, verify it from the repo. Do not rely on memory for operational state. For capability/status questions, inspect `README.md` and status docs first; for command syntax, inspect `src/shyftr/cli.py` or live `--help` output before pasting commands.
+Rule: if a claim can be verified from the repo, verify it from the repo. Do not rely on memory for operational state. For capability/status questions, inspect `README.md` and tracked public docs first; for command syntax, inspect `src/shyftr/cli.py` or live `--help` output before pasting commands.
 
 ## Core Model
 
@@ -168,8 +168,8 @@ Tool discipline:
 Core verification from repo root:
 
 ```bash
-cd /Users/stefan/ShyftR
-PYTHONPATH=.:src pytest -q
+cd <shyftr-repo>
+PYTHONPATH=.:src python -m compileall -q src scripts examples
 python scripts/terminology_inventory.py --fail-on-public-stale
 python scripts/terminology_inventory.py --fail-on-capitalized-prose
 python scripts/public_readiness_check.py
@@ -223,13 +223,13 @@ Before public commits, classify each changed file as public proof, public contra
 The repo-bundled skill is canonical and inspectable:
 
 ```text
-/Users/stefan/ShyftR/adapters/hermes/skills/shyftr/SKILL.md
+adapters/hermes/skills/shyftr/SKILL.md
 ```
 
 The local runtime copy should match it unless a clearly marked local-only note is approved:
 
 ```text
-/Users/stefan/.hermes/skills/software-development/shyftr/SKILL.md
+<local-hermes-skills>/software-development/shyftr/SKILL.md
 ```
 
 If either copy changes, sync the other before verification and public commit. ShyftR installation should not silently mutate `~/.hermes`; operators may inspect and copy/sync the skill explicitly.
@@ -237,20 +237,20 @@ If either copy changes, sync the other before verification and public commit. Sh
 ## Common Pitfalls
 
 1. Skill duplicates repo docs: keep this skill compact and route to repo files instead of copying long doctrine.
-2. Capability overclaiming: current claims must match `docs/status/current-implementation-status.md` and release docs.
+2. Capability overclaiming: current claims must match tracked public docs, tests, and release gates.
 3. Context-window overclaiming: ShyftR reduces prompt bloat and improves continuity; it does not increase hard provider limits.
 4. Carry naming drift: use `carry` for operator-facing CLI/MCP/HTTP; preserve `continuity_*` compatibility aliases, fields, and ledger paths unless a reviewed migration says otherwise.
 5. Live context pollution: active session state is not durable memory by default; harvest must classify it.
 6. Dry-run defaults: external MCP/HTTP/CLI write surfaces often require explicit `write=true` or `--write` after review.
 7. Legacy vocabulary leakage: new prose should use evidence/candidate/memory/pattern/rule, pack, feedback, and `memory_id`; legacy aliases only in compatibility notes or raw field references.
 8. Public/private leakage: do not commit private-core heuristics, real data, local Hermes profile secrets, or private operator material.
-9. Phase invention: read `docs/plans/` and `docs/status/` before naming or extending phases.
+9. Scope invention: read tracked public docs and local-only planning/status artifacts before naming or extending work scopes.
 10. Self-referential SHA drift: separate preflight/tested SHA from final artifact commit SHA in closeouts.
 11. Operational-memory drift: do not store ShyftR queue state, branch/worktree state, worker summaries, artifact paths, or completion logs in Hermes-main memory; inspect files/ledgers/session recall instead.
 
 ## Verification Checklist
 
-- [ ] Current repo files inspected before capability, release, or phase claims.
+- [ ] Current repo files inspected before capability, release, or future-work claims.
 - [ ] Cell role selected correctly: memory, carry/continuity, or live context.
 - [ ] Writes are dry-run/proposal-first unless explicit approval exists.
 - [ ] Public/private classification complete for changed files.

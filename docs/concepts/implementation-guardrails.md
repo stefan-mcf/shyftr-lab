@@ -1,6 +1,6 @@
 # ShyftR Implementation Guardrules
 
-Status: implementation rule. Use this file as a guardrule before starting or reviewing any ShyftR tranche, especially the Universal memory Substrate follow-up plan.
+Status: implementation rule. Use this file as a guardrule before starting or reviewing any ShyftR work slice, especially the Universal memory Substrate follow-up plan.
 
 Purpose: keep ShyftR ambitious without letting it become a bloated monolith. ShyftR may grow many adapters and projections, but the core must remain a small, stable, local-first memory-cell substrate.
 
@@ -235,7 +235,7 @@ Trusted direct memory paths are allowed only when explicit, auditable, configura
 
 ## Ambition without bloat
 
-The Universal memory Substrate roadmap is allowed to be large because it describes an ecosystem around cells, not a bloated core.
+The Universal memory Substrate future-work is allowed to be large because it describes an ecosystem around cells, not a bloated core.
 
 Healthy ambition:
 
@@ -278,7 +278,7 @@ Do not build a polished UI before the core provider, profile, mutation, retrieva
 
 ## Design review checklist
 
-Before accepting a tranche, ask:
+Before accepting a work slice, ask:
 
 1. Does this preserve cell ledgers as canonical truth?
 2. Does this keep generated artifacts as projections?
@@ -290,7 +290,7 @@ Before accepting a tranche, ask:
 8. Does this keep external runtimes responsible for execution?
 9. Can indexes and projections be rebuilt from ledgers?
 10. Can this be tested without hosted services unless explicitly marked optional?
-11. Does it fit the current roadmap order, or is it premature UI/integration work?
+11. Does it fit the current future-work order, or is it premature UI/integration work?
 12. Would removing an external note tool, vector backend, or runtime leave ShyftR core intact?
 
 If the answer to any of these is no, revise the design before implementation.

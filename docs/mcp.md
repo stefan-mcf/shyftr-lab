@@ -67,7 +67,7 @@ The bridge is read/pack-first. Memory writes and feedback writes require `write=
 
 ```bash
 PYTHONPATH=src python3 -m py_compile src/shyftr/mcp_server.py
-PYTHONPATH=src python3 -m pytest -q tests/test_mcp_server.py tests/test_memory_provider.py tests/test_pack_api.py
+PYTHONPATH=src python3 -m py_compile src/shyftr/mcp_server.py src/shyftr/memory_provider.py src/shyftr/pack.py
 python scripts/terminology_inventory.py --fail-on-public-stale
 python scripts/terminology_inventory.py --fail-on-capitalized-prose
 python scripts/public_readiness_check.py

@@ -9,7 +9,7 @@ Autonomous means detect and propose by default. It does not mean silent mutation
 - split an oversized or multi-topic candidate before promotion;
 - merge duplicate or overlapping memory records while preserving provenance lineage;
 - supersede, replace, deprecate, forget, or redact memory after repeated feedback or explicit policy evidence. In the public baseline, accepting `supersede_memory` uses the same append-only lifecycle exclusion path as `deprecate_memory`; richer graph-edge/new-memory supersession remains review/operator controlled;
-- promote a missing memory from feedback when a future public-safe detector emits that proposal type. Phase 7.8 can represent and simulate this proposal type, but accepting it is explicitly unimplemented rather than silently no-oping;
+- promote a missing memory from feedback when a future public-safe detector emits that proposal type. regulated autonomous memory evolution track can represent and simulate this proposal type, but accepting it is explicitly unimplemented rather than silently no-oping;
 
 ## What never happens silently
 

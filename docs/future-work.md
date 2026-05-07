@@ -8,7 +8,7 @@ ShyftR currently supports local cells, append-only ledgers, review-gated memory 
 
 ## Future local-first work
 
-Potential next work should be planned in a new artifact after the implementation-tranches plan closeout:
+Potential next work should be proposed as small, evidence-backed changes:
 
 - richer package/release automation if package publication is separately approved;
 - additional local runtime adapters backed by synthetic fixtures and operator-approved data;
@@ -18,4 +18,4 @@ Potential next work should be planned in a new artifact after the implementation
 
 ## Out of scope for the current public release
 
-Hosted SaaS, production multi-tenancy, real customer data, private-core scoring/ranking/compaction, package publication, and support commitments remain outside the current public release until separately approved and evidenced.
+Hosted platform operation, production multi-tenancy, real customer data, private-core scoring/ranking/compaction, package publication, and support commitments remain outside the current public release until separately approved and evidenced.

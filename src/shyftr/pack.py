@@ -50,7 +50,7 @@ _POLLUTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "artifact path as memory",
         re.compile(
-            r"\b(artifact path|worker_runs|worker_manager_returns|CHASSIS/runtime|/Users/[^\s]+|/tmp/[^\s]+|\.log\b)",
+            r"\b(artifact path|worker-artifacts|worker-manager-results|local-runtime/artifacts|/Users/[^\s]+|/tmp/[^\s]+|\.log\b)",
             re.IGNORECASE,
         ),
     ),

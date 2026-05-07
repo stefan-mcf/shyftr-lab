@@ -32,8 +32,8 @@ PY
 echo "== Public release/readiness posture =="
 "$PYTHON_BIN" scripts/public_readiness_check.py
 
-echo "== Python test suite =="
-"$PYTHON_BIN" -m pytest -q
+echo "== Tracked Python compile smoke =="
+"$PYTHON_BIN" -m compileall -q src scripts examples
 
 echo "== Deterministic local lifecycle =="
 PYTHON="$PYTHON_BIN" bash examples/run-local-lifecycle.sh

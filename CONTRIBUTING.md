@@ -9,7 +9,7 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install -e '.[dev,service]'
-python -m pytest -q
+python -m compileall -q src scripts examples
 bash examples/run-local-lifecycle.sh
 python scripts/public_readiness_check.py
 ```

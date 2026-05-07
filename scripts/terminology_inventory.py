@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,11 +32,8 @@ STALE_TERMS = {
 CANONICAL_CAPITALIZED = ["Evidence", "Candidate", "Memory", "Pattern", "Rule", "Cell", "Regulator", "Grid", "Pack", "Feedback", "Quarantine"]
 
 MIGRATION_DOCS = {
-    "docs/plans/2026-05-06-shyftr-plain-language-canonical-rename-plan.md",
-    "docs/status/plain-language-rename-ledger.md",
     "docs/concepts/terminology-compatibility.md",
-    "docs/status/phase-6-kickoff-reconciliation.md",
-    "docs/sources/2026-05-06-shyftr-plain-lifecycle-naming-review.md",
+    "local-only-sources/2026-05-06-shyftr-plain-lifecycle-naming-review.md",
 }
 COMPATIBILITY_FILES = {
     "src/shyftr/models.py",
@@ -45,12 +43,11 @@ COMPATIBILITY_FILES = {
     "src/shyftr/integrations/outcome_api.py",
     "src/shyftr/distill/alloys.py",
     "src/shyftr/distill/doctrine.py",
-    "tests/test_legacy_terminology_compatibility.py",
     "scripts/audit_memory_vocabulary.py",
     "scripts/terminology_inventory.py",
 }
-HISTORICAL_PREFIXES = ("docs/sources/", "docs/feeds/")
-PUBLIC_CURRENT_PREFIXES = ("docs/concepts/", "docs/status/", "docs/demo", "docs/api.md", "docs/console.md", "examples/")
+HISTORICAL_PREFIXES = ("local-only-sources/", "local-only-feeds/")
+PUBLIC_CURRENT_PREFIXES = ("docs/concepts/", "docs/demo", "docs/api.md", "docs/console.md", "examples/")
 
 @dataclass(frozen=True)
 class Match:
@@ -64,19 +61,22 @@ class Match:
 
 
 def iter_files() -> list[Path]:
+    proc = subprocess.run(
+        ["git", "ls-files"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
     files: list[Path] = []
-    for rel in SCAN_ROOTS:
-        path = ROOT / rel
-        if not path.exists():
+    for rel in proc.stdout.splitlines():
+        if not rel:
             continue
-        if path.is_file():
+        if not (rel in SCAN_ROOTS or any(rel.startswith(f"{root}/") for root in SCAN_ROOTS if root != rel)):
+            continue
+        path = ROOT / rel
+        if path.is_file() and path.suffix in TEXT_SUFFIXES:
             files.append(path)
-        else:
-            for item in path.rglob("*"):
-                if not item.is_file() or ".git" in item.parts or "node_modules" in item.parts or "dist" in item.parts:
-                    continue
-                if item.suffix in TEXT_SUFFIXES:
-                    files.append(item)
     return sorted(set(files))
 
 
@@ -94,7 +94,7 @@ def is_allowed_stale(rel: str, line: str) -> tuple[bool, str]:
         return True, "implementation or test compatibility surface"
     if rel.startswith(HISTORICAL_PREFIXES):
         return True, "historical source/feed archive"
-    if rel.startswith("docs/plans/") and "2026-05-06-shyftr-plain-language" not in rel:
+    if rel.startswith("local-only-plans/") and "2026-05-06-shyftr-plain-language" not in rel:
         return True, "historical/archival plan"
     if "legacy" in low or "compatib" in low or "deprecated" in low or "alias" in low or "old " in low:
         return True, "explicit compatibility/historical context"
@@ -107,7 +107,7 @@ def is_allowed_stale(rel: str, line: str) -> tuple[bool, str]:
     if "local data boundary" in low or "trust boundary" in low or "trust-boundary" in low or "alpha status boundary" in low or "non-hosted/non-production boundary" in low or "regulator boundary" in low or "safety boundary" in low or "product boundary" in low or "scope boundary" in low or "authority boundary" in low or "cleanup boundary" in low or "alpha boundary" in low or "future-capability boundary" in low or "current boundary" in low or "rule boundary" in low:
         return True, "generic safety boundary usage"
     if "source_cell" in low or "source cell" in low or "federation source" in low:
-        return True, "phase 6 provenance source-cell field"
+        return True, "provenance source-cell field"
     if "source .venv/bin/activate" in low or ". .venv/bin/activate" in low:
         return True, "shell activation command"
     if "source code" in low or "open source" in low or "source file" in low or "source material" in low or "source note" in low or "source identity" in low or "source metadata" in low or "source hash" in low or "source id" in low or "source reference" in low or "source category" in low or "source module" in low or "source workspace" in low or "source context" in low or "source memory" in low or "source tree" in low or "source-tree" in low or "source-root" in low or "source_root" in low or "providing the sources" in low or "source and target" in low or "source quality" in low or "source ledger" in low or "source evidence" in low or "proposal source" in low or "truth source" in low or "the source." in low or "report_feed" in low:
@@ -131,7 +131,7 @@ def is_allowed_capitalized(rel: str, line: str, term: str) -> tuple[bool, str]:
         return True, "code or structured file"
     if rel in MIGRATION_DOCS or rel == "docs/concepts/plain-language-vocabulary.md":
         return True, "migration/glossary capitalization context"
-    if rel.startswith(("docs/plans/", "docs/sources/", "docs/feeds/", "tests/")):
+    if rel.startswith(("local-only-plans/", "local-only-sources/", "local-only-feeds/", "tests/")):
         return True, "historical or test capitalization context"
     if is_heading_or_table(line) or is_code_or_link_context(line):
         return True, "heading/table/code context"

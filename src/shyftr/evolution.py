@@ -453,7 +453,7 @@ def _apply_accepted_proposal(cell: Path, proposal: Mapping[str, Any], *, actor: 
         })
         events.append({"action": "split_proposal_accepted", "auto_promoted_children": False})
     elif ptype == "promote_missing_memory":
-        raise NotImplementedError("promote_missing_memory acceptance is not implemented in the public-safe Phase 7.8 baseline")
+        raise NotImplementedError("promote_missing_memory acceptance is not implemented in the public-safe regulated autonomous memory evolution track baseline")
     return events
 
 

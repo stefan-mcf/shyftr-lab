@@ -53,7 +53,7 @@ class ContinuityPackRequest:
         _require_text(self.compaction_id, "compaction_id")
         _require_text(self.query, "query")
         if self.mode in RESERVED_MODES:
-            raise ValueError(f"mode {self.mode!r} is reserved for a future operator-gated tranche")
+            raise ValueError(f"mode {self.mode!r} is reserved for a future operator-gated work slice")
         if self.mode not in CONTINUITY_MODES:
             raise ValueError(f"mode must be one of: {', '.join(CONTINUITY_MODES)}")
         if not isinstance(self.max_items, int) or isinstance(self.max_items, bool) or self.max_items < 0 or self.max_items > MAX_ITEMS_LIMIT:

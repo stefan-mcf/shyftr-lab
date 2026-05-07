@@ -14,7 +14,7 @@ SKIP_FILES = {
     'apps/console/package-lock.json',
     # Generated audit output. Excluding it prevents recursive ledger growth when
     # --write-ledger is run repeatedly.
-    'docs/status/memory-vocabulary-modernization-ledger.md',
+    '.shyftr-demo/memory-vocabulary-modernization-ledger.md',
 }
 FORBIDDEN_TOKENS = ('charge', 'trace')
 FORBIDDEN_FIELDS = (
@@ -43,10 +43,10 @@ COMPATIBILITY_FILES = {
 }
 COMPATIBILITY_DOCS = {
     'docs/concepts/terminology-compatibility.md',
-    'docs/status/memory-vocabulary-modernization-ledger.md',
+    '.shyftr-demo/memory-vocabulary-modernization-ledger.md',
 }
 COMPATIBILITY_TEST_PREFIXES = ('tests/',)
-ARCHIVAL_PREFIXES = ('docs/plans/', 'docs/sources/', 'docs/feeds/')
+ARCHIVAL_PREFIXES = ('local-only-plans/', 'local-only-sources/', 'local-only-feeds/')
 PUBLIC_PREFIXES = ('README.md','CONTRIBUTING.md','SECURITY.md','CHANGELOG.md','docs/','examples/','apps/console/src/')
 
 @dataclass(frozen=True)
@@ -122,7 +122,7 @@ def scan() -> list[Match]:
 
 
 def write_ledger(matches: list[Match], *, max_examples_per_class: int = 50) -> None:
-    out=ROOT/'docs/status/memory-vocabulary-modernization-ledger.md'
+    out=ROOT/'.shyftr-demo/memory-vocabulary-modernization-ledger.md'
     out.parent.mkdir(parents=True, exist_ok=True)
     counts={}
     for m in matches:

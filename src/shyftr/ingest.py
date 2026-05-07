@@ -20,7 +20,7 @@ def ingest_sources_from_adapter(
 ) -> Dict[str, Any]:
     """Ingest sources into a Cell from any SourceAdapter implementation.
 
-    This Phase 9 adapter path reuses the same ledger-first safety rules as the
+    This integration adapters track adapter path reuses the same ledger-first safety rules as the
     config-backed file adapter: deterministic adapter source keys, boundary
     checks before append, and Source ledger truth with external provenance in
     metadata. Dry-run mode discovers and reads sources but never writes ledgers.
@@ -369,7 +369,7 @@ def _boundary_metadata(metadata: Optional[Dict[str, Any]]) -> Optional[Dict[str,
     """Return user-content metadata for boundary checks, excluding provenance labels.
 
     Adapter ids, source kinds, file names, and content types are provenance, not
-    durable memory text. Checking them verbatim would reject legitimate Phase 9
+    durable memory text. Checking them verbatim would reject legitimate integration adapters track
     closeout/evidence adapters because their adapter names contain words the
     boundary policy correctly rejects in memory content.
     """

@@ -1,12 +1,12 @@
 # Federation protocol
 
-ShyftR Phase 6 federation is local-first and selective. It is not network synchronization, not hosted SaaS behavior, and not a shortcut around regulator review.
+ShyftR multi-cell milestone federation is local-first and selective. It is not network synchronization, not hosted hosted platform behavior, and not a shortcut around regulator review.
 
 ## Package schema
 
 A federation export package is JSON with these fields:
 
-- `schema_version`: currently `phase6.federation.v1`.
+- `schema_version`: currently `federation.v1`.
 - `export_id`: deterministic-looking local export identifier.
 - `source_cell_id`: cell that produced the package.
 - `source_cell_type`: metadata from the source manifest.
