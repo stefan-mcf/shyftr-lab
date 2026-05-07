@@ -1,0 +1,11 @@
+{
+  "fixture_id": "duplicate-conflict",
+  "mode_expectations": {
+    "durable": {
+      "min_useful_memory_inclusion_rate": 0.5
+    },
+    "carry": {
+      "min_useful_memory_inclusion_rate": 0.5
+    }
+  }
+}

@@ -279,12 +279,12 @@ def _add_profile(sub: argparse.ArgumentParser) -> None:
 
 
 def cmd_pack(args: argparse.Namespace) -> None:
-    from shyftr.loadout import LoadoutTaskInput, assemble_loadout
+    from shyftr.pack import LoadoutTaskInput, assemble_loadout
 
     if args.request_json:
         import json as _json
         raw = _json.loads(Path(args.request_json).read_text(encoding="utf-8"))
-        from shyftr.integrations.loadout_api import (
+        from shyftr.integrations.pack_api import (
             RuntimeLoadoutRequest,
             process_runtime_loadout_request,
         )

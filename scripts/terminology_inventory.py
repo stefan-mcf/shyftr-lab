@@ -48,6 +48,11 @@ COMPATIBILITY_FILES = {
 }
 HISTORICAL_PREFIXES = ("local-only-sources/", "local-only-feeds/")
 PUBLIC_CURRENT_PREFIXES = ("docs/concepts/", "docs/demo", "docs/api.md", "docs/console.md", "examples/")
+BASELINE_COMPATIBILITY_PREFIXES = (
+    "examples/evals/current-state-baseline/",
+    "scripts/current_state_baseline.py",
+    "scripts/compare_current_state_baseline.py",
+)
 
 @dataclass(frozen=True)
 class Match:
@@ -94,6 +99,8 @@ def is_allowed_stale(rel: str, line: str) -> tuple[bool, str]:
         return True, "implementation or test compatibility surface"
     if rel.startswith(HISTORICAL_PREFIXES):
         return True, "historical source/feed archive"
+    if rel.startswith(BASELINE_COMPATIBILITY_PREFIXES):
+        return True, "baseline compatibility harness"
     if rel.startswith("local-only-plans/") and "2026-05-06-shyftr-plain-language" not in rel:
         return True, "historical/archival plan"
     if "legacy" in low or "compatib" in low or "deprecated" in low or "alias" in low or "old " in low:

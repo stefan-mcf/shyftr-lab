@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 from shyftr.ledger import append_jsonl, read_jsonl
+from shyftr.ledger_state import latest_by_key
 from shyftr.models import Trace
 
 PathLike = Union[str, Path]
@@ -336,15 +337,14 @@ def approved_traces(cell_path: PathLike) -> List[Trace]:
     ledger = cell / "traces" / "approved.jsonl"
     if not ledger.exists():
         return []
-    latest_by_id: Dict[str, Trace] = {}
-    order: List[str] = []
     allowed = {field.name for field in fields(Trace)}
-    for _, record in read_jsonl(ledger):
-        trace = Trace.from_dict({key: value for key, value in record.items() if key in allowed})
-        if trace.trace_id not in latest_by_id:
-            order.append(trace.trace_id)
-        latest_by_id[trace.trace_id] = trace
-    return [latest_by_id[trace_id] for trace_id in order if latest_by_id[trace_id].status == "approved"]
+    records = [record for _, record in read_jsonl(ledger)]
+    latest_records = latest_by_key(records, "trace_id")
+    traces = [
+        Trace.from_dict({key: value for key, value in record.items() if key in allowed})
+        for record in latest_records
+    ]
+    return [trace for trace in traces if trace.status == "approved"]
 
 
 def _read_lifecycle_events(cell: Path) -> List[tuple[int, JsonRecord]]:

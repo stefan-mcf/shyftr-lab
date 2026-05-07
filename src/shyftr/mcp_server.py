@@ -739,13 +739,14 @@ def _memory_item_to_public(item: Mapping[str, Any]) -> dict[str, Any]:
 def _retrieval_to_public(log: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "retrieval_id": log.get("retrieval_id"),
-        "pack_id": log.get("loadout_id"),
+        "pack_id": log.get("pack_id") or log.get("loadout_id"),
         "selected_memory_ids": log.get("selected_ids", []),
         "candidate_memory_ids": log.get("candidate_ids", []),
         "caution_memory_ids": log.get("caution_ids", []),
         "suppressed_memory_ids": log.get("suppressed_ids", []),
         "query": log.get("query"),
-        "generated_at": log.get("generated_at"),
+        "logged_at": log.get("logged_at") or log.get("generated_at"),
+        "generated_at": log.get("generated_at") or log.get("logged_at"),
     }
 
 

@@ -350,7 +350,7 @@ def pack(
     max_items: int = 10,
     max_tokens: int = 2000,
 ) -> Dict[str, Any]:
-    from shyftr.loadout import LoadoutTaskInput, assemble_loadout
+    from shyftr.pack import LoadoutTaskInput, assemble_loadout
     from shyftr.observability import append_diagnostic_log, operation_timer
 
     with operation_timer() as timer:

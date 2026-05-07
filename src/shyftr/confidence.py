@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from .ledger import append_jsonl, read_jsonl
+from .ledger_state import latest_record_by_key
 from .frontier import ConfidenceState, confidence_from_feedback, project_confidence_state
 
 PathLike = Union[str, Path]
@@ -97,11 +98,12 @@ def _read_outcomes(cell_path: Path) -> List[Dict[str, Any]]:
 
 
 def _trace_by_id(cell_path: Path, trace_id: str) -> Optional[Dict[str, Any]]:
-    """Find a trace by its trace_id."""
-    for record in _read_traces(cell_path):
-        if record.get("trace_id") == trace_id:
-            return record
-    return None
+    """Find the latest approved trace row by logical id."""
+    records = _read_traces(cell_path)
+    latest = latest_record_by_key(records, "trace_id", trace_id)
+    if latest is None:
+        latest = latest_record_by_key(records, "memory_id", trace_id)
+    return latest
 
 
 def _clamp(value: float) -> float:

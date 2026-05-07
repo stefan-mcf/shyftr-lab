@@ -1,0 +1,13 @@
+{
+  "fixture_id": "multi-step-resume",
+  "mode_expectations": {
+    "carry": {
+      "min_resume_state_score": 0.25
+    },
+    "live": {
+      "min_preserved_decision_rate": 0.5,
+      "min_preserved_artifact_ref_rate": 0.5,
+      "min_preserved_open_loop_rate": 0.5
+    }
+  }
+}

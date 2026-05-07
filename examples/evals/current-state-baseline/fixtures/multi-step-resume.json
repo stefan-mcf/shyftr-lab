@@ -1,0 +1,107 @@
+{
+  "fixture_id": "multi-step-resume",
+  "title": "Multi-step work resume",
+  "mode_support": [
+    "carry",
+    "live"
+  ],
+  "task_prompt": "Resume a multi-step baseline harness implementation without losing the next action, decision, or blocker notes.",
+  "durable_memories": [
+    {
+      "id": "durable-policy",
+      "kind": "workflow",
+      "statement": "Synthetic baseline work should stay temp-cell scoped and evidence-first."
+    }
+  ],
+  "continuity_entries": [
+    {
+      "result": "resumed_with_open_loops",
+      "useful_ids": [
+        "durable-policy"
+      ],
+      "harmful_ids": [],
+      "ignored_ids": [],
+      "missing_notes": [
+        "Need the unfinished comparison script task."
+      ],
+      "promote_notes": []
+    }
+  ],
+  "live_context_entries": [
+    {
+      "id": "live-goal",
+      "entry_kind": "active_goal",
+      "content": "Finish the current-state baseline harness and write the baseline summary.",
+      "retention_hint": "session",
+      "sensitivity_hint": "public"
+    },
+    {
+      "id": "live-decision",
+      "entry_kind": "decision",
+      "content": "Use temp cells instead of touching any real operator profile or user cell.",
+      "retention_hint": "candidate",
+      "sensitivity_hint": "public"
+    },
+    {
+      "id": "live-artifact",
+      "entry_kind": "active_artifact",
+      "content": "scripts/compare_current_state_baseline.py still needs comparator output validation.",
+      "retention_hint": "session",
+      "sensitivity_hint": "public"
+    },
+    {
+      "id": "live-open-loop",
+      "entry_kind": "open_question",
+      "content": "Should the comparator fail on schema drift or tolerate it?",
+      "retention_hint": "session",
+      "sensitivity_hint": "public"
+    }
+  ],
+  "expected_useful_ids": [
+    "durable-policy",
+    "live-goal",
+    "live-decision",
+    "live-artifact",
+    "live-open-loop"
+  ],
+  "expected_stale_ids": [],
+  "expected_harmful_ids": [],
+  "expected_ignored_ids": [],
+  "expected_required_ids": [
+    "live-goal",
+    "live-decision",
+    "live-artifact"
+  ],
+  "expected_resume_state": {
+    "required_ids": [
+      "live-goal",
+      "live-decision",
+      "live-artifact"
+    ],
+    "excluded_ids": [],
+    "constraint_ids": [],
+    "decision_ids": [
+      "live-decision"
+    ],
+    "artifact_ref_ids": [
+      "live-artifact"
+    ],
+    "open_question_ids": [
+      "live-open-loop"
+    ]
+  },
+  "notes": [
+    "This fixture emphasizes resume-state utility over plain retrieval utility."
+  ],
+  "mode_config": {
+    "carry": {
+      "max_items": 2,
+      "max_tokens": 60,
+      "mode": "advisory"
+    },
+    "live": {
+      "max_items": 3,
+      "max_tokens": 90
+    }
+  }
+}

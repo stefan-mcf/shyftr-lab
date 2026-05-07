@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 import uuid
 
 from .ledger import append_jsonl, read_jsonl
-from .loadout import LoadoutTaskInput, assemble_loadout, estimate_tokens, is_operational_state
+from .pack import LoadoutTaskInput, assemble_loadout, estimate_tokens, is_operational_state
 
 PathLike = Union[str, Path]
 

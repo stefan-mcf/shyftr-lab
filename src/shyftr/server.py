@@ -376,12 +376,12 @@ def _register_routes(app: FastAPI) -> None:
         """Request a Loadout / Pack.
 
         Expects JSON body conforming to RuntimeLoadoutRequest schema.
-        Delegates to shyftr.integrations.loadout_api.process_runtime_loadout_request.
+        Delegates to shyftr.integrations.pack_api.process_runtime_loadout_request.
         """
         body = await _parse_body(request)
 
         try:
-            from shyftr.integrations.loadout_api import (
+            from shyftr.integrations.pack_api import (
                 RuntimeLoadoutRequest,
                 process_runtime_loadout_request,
             )
@@ -655,7 +655,7 @@ def _register_routes(app: FastAPI) -> None:
         body = await _parse_body(request)
         body.setdefault("cell_path_or_id", str(_resolve_cell(root, cell_id)))
         try:
-            from shyftr.integrations.loadout_api import RuntimeLoadoutRequest, process_runtime_loadout_request
+            from shyftr.integrations.pack_api import RuntimeLoadoutRequest, process_runtime_loadout_request
             response = process_runtime_loadout_request(RuntimeLoadoutRequest.from_dict(body))
             return JSONResponse(content=response.to_dict())
         except Exception as exc:

@@ -1,0 +1,85 @@
+{
+  "fixture_id": "noisy-cell-suppression",
+  "title": "Noisy-cell suppression",
+  "mode_support": [
+    "durable",
+    "carry"
+  ],
+  "task_prompt": "Need a specific baseline comparison rule without being drowned in irrelevant memories.",
+  "durable_memories": [
+    {
+      "id": "comparison-rule",
+      "kind": "workflow",
+      "statement": "Later tranches should compare their summary JSON against the current-state baseline before final review."
+    },
+    {
+      "id": "noise-1",
+      "kind": "workflow",
+      "statement": "An unrelated brainstorm note mentioned office stationery."
+    },
+    {
+      "id": "noise-2",
+      "kind": "workflow",
+      "statement": "Another unrelated note mentioned diagram margins."
+    },
+    {
+      "id": "noise-3",
+      "kind": "workflow",
+      "statement": "A throwaway note mentioned snack planning."
+    }
+  ],
+  "continuity_entries": [
+    {
+      "result": "noise_noted",
+      "useful_ids": [
+        "comparison-rule"
+      ],
+      "harmful_ids": [],
+      "ignored_ids": [
+        "noise-1",
+        "noise-2",
+        "noise-3"
+      ],
+      "missing_notes": [],
+      "promote_notes": []
+    }
+  ],
+  "live_context_entries": [],
+  "expected_useful_ids": [
+    "comparison-rule"
+  ],
+  "expected_stale_ids": [],
+  "expected_harmful_ids": [],
+  "expected_ignored_ids": [
+    "noise-1",
+    "noise-2",
+    "noise-3"
+  ],
+  "expected_required_ids": [
+    "comparison-rule"
+  ],
+  "expected_resume_state": {
+    "required_ids": [
+      "comparison-rule"
+    ],
+    "excluded_ids": [],
+    "constraint_ids": [],
+    "decision_ids": [],
+    "artifact_ref_ids": [],
+    "open_question_ids": []
+  },
+  "notes": [
+    "This fixture tracks over-retrieval/noise pressure."
+  ],
+  "mode_config": {
+    "durable": {
+      "max_items": 3,
+      "max_tokens": 90
+    },
+    "carry": {
+      "max_items": 2,
+      "max_tokens": 60,
+      "mode": "advisory"
+    }
+  }
+}

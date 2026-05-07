@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
 import uuid
 
 from .ledger import append_jsonl, read_jsonl
-from .loadout import estimate_tokens
+from .pack import estimate_tokens
 
 PathLike = Union[str, Path]
 

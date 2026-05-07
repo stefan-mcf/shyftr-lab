@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from .loadout_api import RuntimeLoadoutRequest, RuntimeLoadoutResponse, process_runtime_loadout_request
+from .pack_api import RuntimeLoadoutRequest, RuntimeLoadoutResponse, process_runtime_loadout_request
 from .outcome_api import RuntimeOutcomeReport, RuntimeOutcomeResponse, process_runtime_outcome_report
 from .proposals import RuntimeProposal, export_runtime_proposals, proposal_from_evidence
 from .test_harness import AdapterHarnessResult, AdapterTestHarness

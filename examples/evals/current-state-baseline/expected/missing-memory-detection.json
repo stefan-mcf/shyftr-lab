@@ -1,0 +1,14 @@
+{
+  "fixture_id": "missing-memory-detection",
+  "mode_expectations": {
+    "durable": {
+      "min_missing_memory_rate": 1.0
+    },
+    "carry": {
+      "min_missing_memory_rate": 1.0
+    },
+    "live": {
+      "min_missing_memory_rate": 1.0
+    }
+  }
+}

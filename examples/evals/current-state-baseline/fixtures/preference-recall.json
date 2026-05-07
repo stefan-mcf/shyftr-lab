@@ -1,0 +1,110 @@
+{
+  "fixture_id": "preference-recall",
+  "title": "Preference recall with stale suppression",
+  "mode_support": [
+    "durable",
+    "carry",
+    "live"
+  ],
+  "task_prompt": "Need Stefan's preferred proof style for public-safe evidence and should avoid stale benchmark claims.",
+  "durable_memories": [
+    {
+      "id": "pref-proof",
+      "kind": "preference",
+      "statement": "README evidence copy should state what proof shows, not layout mechanics."
+    },
+    {
+      "id": "stale-benchmark-claim",
+      "kind": "supersession",
+      "statement": "Claim hosted benchmark superiority from synthetic local fixtures."
+    },
+    {
+      "id": "ignored-color",
+      "kind": "workflow",
+      "statement": "The preferred accent color for diagrams is blue."
+    }
+  ],
+  "continuity_entries": [
+    {
+      "result": "resumed_with_correct_preference",
+      "useful_ids": [
+        "pref-proof"
+      ],
+      "harmful_ids": [
+        "stale-benchmark-claim"
+      ],
+      "ignored_ids": [
+        "ignored-color"
+      ],
+      "missing_notes": [],
+      "promote_notes": [
+        "Public-safe proof wording should prefer what the evidence shows."
+      ]
+    }
+  ],
+  "live_context_entries": [
+    {
+      "id": "live-constraint",
+      "entry_kind": "constraint",
+      "content": "Do not turn synthetic local fixtures into market-superiority claims.",
+      "retention_hint": "candidate",
+      "sensitivity_hint": "public"
+    },
+    {
+      "id": "live-plan",
+      "entry_kind": "active_plan",
+      "content": "Write the proof section in plain evidence-first language.",
+      "retention_hint": "session",
+      "sensitivity_hint": "public"
+    }
+  ],
+  "expected_useful_ids": [
+    "pref-proof",
+    "live-constraint"
+  ],
+  "expected_stale_ids": [
+    "stale-benchmark-claim"
+  ],
+  "expected_harmful_ids": [
+    "stale-benchmark-claim"
+  ],
+  "expected_ignored_ids": [
+    "ignored-color"
+  ],
+  "expected_required_ids": [
+    "pref-proof"
+  ],
+  "expected_resume_state": {
+    "required_ids": [
+      "pref-proof"
+    ],
+    "excluded_ids": [
+      "stale-benchmark-claim"
+    ],
+    "constraint_ids": [
+      "live-constraint"
+    ],
+    "decision_ids": [],
+    "artifact_ref_ids": [],
+    "open_question_ids": []
+  },
+  "notes": [
+    "Durable mode should surface the proof preference.",
+    "Carry/live modes should preserve the public-claim constraint."
+  ],
+  "mode_config": {
+    "durable": {
+      "max_items": 3,
+      "max_tokens": 80
+    },
+    "carry": {
+      "max_items": 2,
+      "max_tokens": 60,
+      "mode": "advisory"
+    },
+    "live": {
+      "max_items": 2,
+      "max_tokens": 60
+    }
+  }
+}

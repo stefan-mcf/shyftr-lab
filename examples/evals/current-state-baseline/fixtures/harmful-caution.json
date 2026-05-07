@@ -1,0 +1,84 @@
+{
+  "fixture_id": "harmful-caution",
+  "title": "Harmful caution handling",
+  "mode_support": [
+    "durable",
+    "carry"
+  ],
+  "task_prompt": "Need safe guidance for a repo-local proof plan and should avoid unsafe public overclaiming.",
+  "durable_memories": [
+    {
+      "id": "safe-boundary",
+      "kind": "constraint",
+      "statement": "Do not use real customer or regulated data in public-safe proof fixtures."
+    },
+    {
+      "id": "unsafe-overclaim",
+      "kind": "anti_pattern",
+      "statement": "Use real private runtime transcripts to make the proof look stronger."
+    },
+    {
+      "id": "ignored-unrelated",
+      "kind": "workflow",
+      "statement": "A previous draft used three screenshot captions."
+    }
+  ],
+  "continuity_entries": [
+    {
+      "result": "resumed_safely",
+      "useful_ids": [
+        "safe-boundary"
+      ],
+      "harmful_ids": [
+        "unsafe-overclaim"
+      ],
+      "ignored_ids": [
+        "ignored-unrelated"
+      ],
+      "missing_notes": [
+        "Need to remember that private transcripts remain out of scope."
+      ],
+      "promote_notes": []
+    }
+  ],
+  "live_context_entries": [],
+  "expected_useful_ids": [
+    "safe-boundary"
+  ],
+  "expected_stale_ids": [],
+  "expected_harmful_ids": [
+    "unsafe-overclaim"
+  ],
+  "expected_ignored_ids": [
+    "ignored-unrelated"
+  ],
+  "expected_required_ids": [
+    "safe-boundary"
+  ],
+  "expected_resume_state": {
+    "required_ids": [
+      "safe-boundary"
+    ],
+    "excluded_ids": [
+      "unsafe-overclaim"
+    ],
+    "constraint_ids": [],
+    "decision_ids": [],
+    "artifact_ref_ids": [],
+    "open_question_ids": []
+  },
+  "notes": [
+    "This fixture checks whether harmful anti-pattern memory still surfaces."
+  ],
+  "mode_config": {
+    "durable": {
+      "max_items": 3,
+      "max_tokens": 80
+    },
+    "carry": {
+      "max_items": 2,
+      "max_tokens": 60,
+      "mode": "advisory"
+    }
+  }
+}

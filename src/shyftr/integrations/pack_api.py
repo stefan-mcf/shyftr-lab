@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from ..loadout import (
+from ..pack import (
     AssembledLoadout,
     LoadoutItem,
     LoadoutTaskInput,
@@ -112,7 +112,7 @@ class RuntimeLoadoutResponse:
     conflict groups so the runtime can apply them without parsing prose.
 
     Fields:
-        loadout_id: Unique identifier for this Loadout assembly event.
+        loadout_id: Compatibility identifier for this loadout assembly event.
         request: The original request that produced this response.
         guidance_items: High-trust actionable guidance (doctrine, high-
             confidence traces). These are the primary memory the runtime
@@ -144,8 +144,13 @@ class RuntimeLoadoutResponse:
     total_tokens: int = 0
     generated_at: str = ""
 
+    @property
+    def pack_id(self) -> str:
+        return self.loadout_id
+
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "pack_id": self.pack_id,
             "loadout_id": self.loadout_id,
             "request": self.request.to_dict(),
             "guidance_items": list(self.guidance_items),
@@ -158,6 +163,7 @@ class RuntimeLoadoutResponse:
             "total_items": self.total_items,
             "total_tokens": self.total_tokens,
             "generated_at": self.generated_at,
+            "logged_at": self.generated_at,
         }
 
     @classmethod
@@ -165,7 +171,7 @@ class RuntimeLoadoutResponse:
         request_data = payload.get("request", {})
         req = RuntimeLoadoutRequest.from_dict(request_data) if request_data else RuntimeLoadoutRequest(cell_path_or_id="", query="")
         return cls(
-            loadout_id=payload.get("loadout_id", ""),
+            loadout_id=payload.get("loadout_id") or payload.get("pack_id", ""),
             request=req,
             guidance_items=list(payload.get("guidance_items", [])),
             caution_items=list(payload.get("caution_items", [])),
@@ -176,7 +182,7 @@ class RuntimeLoadoutResponse:
             score_traces=dict(payload.get("score_traces", {})),
             total_items=payload.get("total_items", 0),
             total_tokens=payload.get("total_tokens", 0),
-            generated_at=payload.get("generated_at", ""),
+            generated_at=payload.get("generated_at") or payload.get("logged_at", ""),
         )
 
     def to_json(self) -> str:

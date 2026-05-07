@@ -1,0 +1,78 @@
+{
+  "fixture_id": "missing-memory-detection",
+  "title": "Missing-memory detection",
+  "mode_support": [
+    "durable",
+    "carry",
+    "live"
+  ],
+  "task_prompt": "Need a missing prerequisite memory item and should record the gap rather than claiming success.",
+  "durable_memories": [
+    {
+      "id": "partial-context",
+      "kind": "workflow",
+      "statement": "Only part of the required baseline contract is present."
+    }
+  ],
+  "continuity_entries": [
+    {
+      "result": "missing_memory_detected",
+      "useful_ids": [],
+      "harmful_ids": [],
+      "ignored_ids": [],
+      "missing_notes": [
+        "Required baseline prerequisite memory is absent."
+      ],
+      "promote_notes": []
+    }
+  ],
+  "live_context_entries": [
+    {
+      "id": "need-missing-check",
+      "entry_kind": "open_question",
+      "content": "Which prerequisite memory item is still missing?",
+      "retention_hint": "session",
+      "sensitivity_hint": "public"
+    }
+  ],
+  "expected_useful_ids": [
+    "partial-context",
+    "need-missing-check"
+  ],
+  "expected_stale_ids": [],
+  "expected_harmful_ids": [],
+  "expected_ignored_ids": [],
+  "expected_required_ids": [
+    "missing-required-item"
+  ],
+  "expected_resume_state": {
+    "required_ids": [
+      "missing-required-item"
+    ],
+    "excluded_ids": [],
+    "constraint_ids": [],
+    "decision_ids": [],
+    "artifact_ref_ids": [],
+    "open_question_ids": [
+      "need-missing-check"
+    ]
+  },
+  "notes": [
+    "This fixture intentionally references a required id that does not exist in the seeded memories so missing-memory rate stays non-zero."
+  ],
+  "mode_config": {
+    "durable": {
+      "max_items": 2,
+      "max_tokens": 50
+    },
+    "carry": {
+      "max_items": 2,
+      "max_tokens": 50,
+      "mode": "advisory"
+    },
+    "live": {
+      "max_items": 1,
+      "max_tokens": 30
+    }
+  }
+}

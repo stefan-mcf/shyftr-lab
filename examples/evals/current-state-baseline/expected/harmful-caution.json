@@ -1,0 +1,11 @@
+{
+  "fixture_id": "harmful-caution",
+  "mode_expectations": {
+    "durable": {
+      "max_harmful_memory_inclusion_rate": 1.0
+    },
+    "carry": {
+      "min_resume_state_score": 0.5
+    }
+  }
+}

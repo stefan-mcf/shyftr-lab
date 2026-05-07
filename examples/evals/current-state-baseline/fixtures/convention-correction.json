@@ -1,0 +1,113 @@
+{
+  "fixture_id": "convention-correction",
+  "title": "Corrected convention vs outdated convention",
+  "mode_support": [
+    "durable",
+    "carry",
+    "live"
+  ],
+  "task_prompt": "Need the current naming convention for ShyftR runtime bundles and should avoid outdated loadout wording confusion.",
+  "durable_memories": [
+    {
+      "id": "current-pack-convention",
+      "kind": "workflow",
+      "statement": "User-facing prose should prefer pack while preserving raw loadout fields only where implementation requires it."
+    },
+    {
+      "id": "outdated-loadout-prose",
+      "kind": "anti_pattern",
+      "statement": "Rename every public pack mention to loadout immediately, even in docs that describe user-facing concepts."
+    },
+    {
+      "id": "ignored-side-note",
+      "kind": "workflow",
+      "statement": "The repo once used a temporary icon draft in private sketches."
+    }
+  ],
+  "continuity_entries": [
+    {
+      "result": "resumed_with_correct_naming",
+      "useful_ids": [
+        "current-pack-convention"
+      ],
+      "harmful_ids": [
+        "outdated-loadout-prose"
+      ],
+      "ignored_ids": [
+        "ignored-side-note"
+      ],
+      "missing_notes": [
+        "Need explicit note about pack/loadout split in reports."
+      ],
+      "promote_notes": []
+    }
+  ],
+  "live_context_entries": [
+    {
+      "id": "live-decision",
+      "entry_kind": "decision",
+      "content": "Preserve raw loadout fields in raw artifacts but describe the user-facing concept as a pack.",
+      "retention_hint": "candidate",
+      "sensitivity_hint": "public"
+    },
+    {
+      "id": "live-open-question",
+      "entry_kind": "open_question",
+      "content": "Should the final report include both raw and normalized naming?",
+      "retention_hint": "session",
+      "sensitivity_hint": "public"
+    }
+  ],
+  "expected_useful_ids": [
+    "current-pack-convention",
+    "live-decision",
+    "live-open-question"
+  ],
+  "expected_stale_ids": [
+    "outdated-loadout-prose"
+  ],
+  "expected_harmful_ids": [
+    "outdated-loadout-prose"
+  ],
+  "expected_ignored_ids": [
+    "ignored-side-note"
+  ],
+  "expected_required_ids": [
+    "current-pack-convention"
+  ],
+  "expected_resume_state": {
+    "required_ids": [
+      "current-pack-convention",
+      "live-decision"
+    ],
+    "excluded_ids": [
+      "outdated-loadout-prose"
+    ],
+    "constraint_ids": [],
+    "decision_ids": [
+      "live-decision"
+    ],
+    "artifact_ref_ids": [],
+    "open_question_ids": [
+      "live-open-question"
+    ]
+  },
+  "notes": [
+    "This fixture tests latest/current convention recall and stale convention suppression."
+  ],
+  "mode_config": {
+    "durable": {
+      "max_items": 3,
+      "max_tokens": 90
+    },
+    "carry": {
+      "max_items": 2,
+      "max_tokens": 70,
+      "mode": "advisory"
+    },
+    "live": {
+      "max_items": 2,
+      "max_tokens": 70
+    }
+  }
+}

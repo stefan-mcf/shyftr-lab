@@ -52,11 +52,48 @@ Before acting, choose the current source file for the question:
 | Live context/session harvest | `docs/concepts/live-context-optimization-and-session-harvest.md`, `src/shyftr/live_context.py` |
 | MCP tools | `docs/mcp.md`, `src/shyftr/mcp_server.py` |
 | CLI commands | `src/shyftr/cli.py`, `docs/runtime-context-optimization-example.md` |
-| Implementation evidence | `README.md`, tests, and release gates |
+| Implementation evidence | `README.md`, current CI/release gates, and tracked public proof artifacts; do not assume ignored local `tests/` is public evidence |
 | Future work | `docs/future-work.md`; local-only planning/status artifacts are intentionally ignored |
 | Skill packaging | `adapters/hermes/skills/shyftr/SKILL.md`, `docs/skills.md` |
 
-Rule: if a claim can be verified from the repo, verify it from the repo. Do not rely on memory for operational state. For capability/status questions, inspect `README.md` and tracked public docs first; for command syntax, inspect `src/shyftr/cli.py` or live `--help` output before pasting commands.
+## Code Navigation Map
+
+Use this when the question is about where to edit or inspect implementation first:
+
+| Need | Open first |
+|---|---|
+| CLI command parsing and flags | `src/shyftr/cli.py` |
+| MCP tool schemas and bridge wiring | `src/shyftr/mcp_server.py` |
+| Durable memory provider/search/remember flow | `src/shyftr/provider/memory.py` |
+| Core record/data models (`Evidence`, `Candidate`, `Memory`, `Pack`, `Feedback`) | `src/shyftr/models.py` |
+| Pack/loadout assembly and operational-state filtering | `src/shyftr/pack.py` |
+| Feedback/outcome learning | `src/shyftr/feedback.py`, `src/shyftr/outcomes.py` |
+| Continuity pack and compaction feedback | `src/shyftr/continuity.py` |
+| Live context capture/pack/harvest | `src/shyftr/live_context.py` |
+| Ledger append/read/hash-chain behavior | `src/shyftr/ledger.py` |
+| Runtime/server wiring | `src/shyftr/server.py`, `src/shyftr/console_api.py` |
+
+Rule: prefer the first file that answers the question, not a broad tree walk. Use the repo-truth workflow below for claim and command verification.
+
+## Terminology and Claim Guardrails
+
+Canonical public lifecycle vocabulary is:
+
+```text
+evidence -> candidate -> memory -> pattern -> rule
+```
+
+Canonical support terms in normal prose: `cell`, `ledger`, `regulator`, `grid`, `pack`, `feedback`, `confidence`, `decay`, `quarantine`.
+
+Compatibility rule:
+- new prose, examples, and operator summaries should use canonical public terms;
+- legacy aliases belong only in compatibility docs, field names, old ledger/file references, deprecated CLI/API surfaces, or quoted repo artifacts;
+- do not propose removing compatibility aliases without an explicit human-approved migration path.
+
+Current-claim rule:
+- treat `README.md` as canonical public-facing truth for product posture when it has been explicitly accepted;
+- use concept docs and source files to answer implementation questions, but do not "correct" the README into more negative wording unless the repo's approved readiness/docs posture requires it;
+- for terminology edge cases, inspect `docs/concepts/terminology-compatibility.md` and `docs/status/plain-language-rename-ledger.md` first.
 
 ## Core Model
 
@@ -125,6 +162,12 @@ Live context cell:
 - runtime adapters should trigger harvest on session close/switch, resume, reset, compression rollover, and shutdown paths where supported;
 - direct durable memory should remain disabled unless an explicit reviewed local policy enables it.
 
+Runtime mode posture:
+- `off`: no live capture or continuity export;
+- `shadow`: capture/classify only; no exported pack or durable-memory write;
+- `advisory`: export bounded packs and review-gated proposals;
+- `managed`/stronger authority modes: reserved or operator-gated unless current repo files explicitly say otherwise.
+
 Safe public frame:
 
 ```text
@@ -133,28 +176,25 @@ ShyftR captures live working context into cells, harvests durable lessons at ses
 
 Avoid numeric context-window expansion claims. ShyftR can reduce prompt bloat and improve continuity, but it does not increase a provider's hard context limit.
 
+## Repo-Truth Workflow
+
+When answering or editing:
+1. start with the smallest doc/source pointer that matches the question;
+2. verify public capability/posture claims from `README.md` and tracked docs;
+3. verify command syntax from `src/shyftr/cli.py`, `docs/mcp.md`, or live help/source before pasting commands;
+4. verify implementation claims from the current source file, not memory;
+5. sync the repo-bundled skill and local runtime copy whenever this skill changes.
+
 ## Hermes and MCP Tool Map
 
-General memory tools:
-- `shyftr_pack`: request bounded trust-labeled memory context.
-- `shyftr_remember`: preview/write durable memory; dry-run unless `write=true`.
-- `shyftr_search`: search a cell.
-- `shyftr_profile`: compact profile projection.
-- `shyftr_record_feedback`: record pack outcome; dry-run unless `write=true`.
+Use the tool group that matches the job:
 
-Carry/continuity tools:
-- `shyftr_carry_pack`
-- `shyftr_carry_feedback`
-- `shyftr_carry_status`
-- `shyftr_continuity_pack` compatibility alias
-- `shyftr_continuity_feedback` compatibility alias
-- `shyftr_continuity_status` compatibility alias
-
-Live context tools:
-- `shyftr_live_context_capture`
-- `shyftr_live_context_pack`
-- `shyftr_session_harvest`
-- `shyftr_live_context_status`
+| Role | Primary tools | Use for | Write posture |
+|---|---|---|---|
+| Durable memory retrieval/application | `shyftr_pack`, `shyftr_search`, `shyftr_profile` | retrieving bounded memory context, searching a cell, projecting compact memory state | read-only by default |
+| Durable memory creation/learning | `shyftr_remember`, `shyftr_record_feedback` | proposing/writing durable memory and recording whether retrieved memory helped or harmed | preview/dry-run first; write only with reviewed payload or explicit authorization |
+| Context-pressure continuity | `shyftr_carry_pack`, `shyftr_carry_feedback`, `shyftr_carry_status` | resumed-work packs, continuity feedback, continuity status | use `carry` in operator-facing prose; `continuity_*` names remain compatibility aliases |
+| Live session context | `shyftr_live_context_capture`, `shyftr_live_context_pack`, `shyftr_session_harvest`, `shyftr_live_context_status` | capturing working context, exporting bounded live-context packs, harvesting session-close outputs | capture/harvest are not durable-memory authority by default |
 
 Tool discipline:
 - use `write=false`/dry-run or omit `--write` first unless the user explicitly asks to write;
@@ -200,11 +240,13 @@ For full examples, inspect the repo docs and current CLI help instead of expandi
 
 ## Public/Private Boundary
 
+For a concrete public cleanup recipe, use `references/public-surface-cleanup.md` before editing `.gitignore`, public-readiness gates, or terminology scans.
+
 Public repo may include:
 - local-first contracts and implementation;
 - synthetic fixtures and examples;
 - public proof/status docs;
-- deterministic tests and gates;
+- deterministic verification gates (compile smoke, CLI smoke, lifecycle/release gates, terminology inventory, public readiness); tracked pytest suites are not required when `tests/` is intentionally local/ignored;
 - project-bundled Hermes skill source;
 - docs for CLI/MCP/HTTP surfaces.
 
@@ -247,6 +289,10 @@ If either copy changes, sync the other before verification and public commit. Sh
 9. Scope invention: read tracked public docs and local-only planning/status artifacts before naming or extending work scopes.
 10. Self-referential SHA drift: separate preflight/tested SHA from final artifact commit SHA in closeouts.
 11. Operational-memory drift: do not store ShyftR queue state, branch/worktree state, worker summaries, artifact paths, or completion logs in Hermes-main memory; inspect files/ledgers/session recall instead.
+12. Ignored local test scratch: if `tests/` or `test/` is ignored for a public-surface cleanup, preserve useful local files on disk but remove tracked copies with `git rm -r --cached -f tests` and update CI/docs away from `pytest` commands that would fail in a clean public clone.
+13. Ignored status/proof artifacts: some ShyftR cleanups intentionally ignore `docs/status/` and related proof paths. When a plan asks for repo-local deliverables there, verify the files on disk directly and mention if git status will hide them; do not mistake "not visible in git status" for "not created".
+14. Planning tag leakage: old public tags/releases such as `v0.0.0-planning` can expose stale tracked trees even after `main` is cleaned. Inspect and delete/replace stale tags deliberately, then verify `git ls-remote --tags origin '<tag>*'` and `gh release view <tag>` return no public release/tag unless an intentional clean tag is being published.
+15. Roadmap refresh drift: when updating a roadmap/planning doc from multiple research reports, treat the newest report as source of truth, diff it against the prior source and the current roadmap, and preserve any already-started phase boundary the user marks as frozen. Add newly discovered items only after that boundary; do not quietly merge them into the frozen phase.
 
 ## Verification Checklist
 

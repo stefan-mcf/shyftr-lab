@@ -1,0 +1,16 @@
+{
+  "fixture_id": "preference-recall",
+  "mode_expectations": {
+    "durable": {
+      "min_useful_memory_inclusion_rate": 0.5,
+      "max_harmful_memory_inclusion_rate": 1.0,
+      "max_missing_memory_rate": 0.5
+    },
+    "carry": {
+      "min_resume_state_score": 0.5
+    },
+    "live": {
+      "min_preserved_constraint_rate": 0.5
+    }
+  }
+}

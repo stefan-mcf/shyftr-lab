@@ -1,0 +1,82 @@
+{
+  "fixture_id": "duplicate-conflict",
+  "title": "Duplicate or conflicting entries",
+  "mode_support": [
+    "durable",
+    "carry"
+  ],
+  "task_prompt": "Need to see how current behavior handles duplicate or conflicting memory candidates about benchmark scope.",
+  "durable_memories": [
+    {
+      "id": "current-scope",
+      "kind": "workflow",
+      "statement": "Current baseline claims must stay synthetic, local, and bounded."
+    },
+    {
+      "id": "duplicate-current-scope",
+      "kind": "workflow",
+      "statement": "Current baseline claims must stay synthetic, local, and bounded."
+    },
+    {
+      "id": "conflicting-scope",
+      "kind": "supersession",
+      "statement": "The baseline should be framed as external hosted proof immediately."
+    }
+  ],
+  "continuity_entries": [
+    {
+      "result": "duplicate_conflict_observed",
+      "useful_ids": [
+        "current-scope"
+      ],
+      "harmful_ids": [
+        "conflicting-scope"
+      ],
+      "ignored_ids": [
+        "duplicate-current-scope"
+      ],
+      "missing_notes": [],
+      "promote_notes": []
+    }
+  ],
+  "live_context_entries": [],
+  "expected_useful_ids": [
+    "current-scope"
+  ],
+  "expected_stale_ids": [],
+  "expected_harmful_ids": [
+    "conflicting-scope"
+  ],
+  "expected_ignored_ids": [
+    "duplicate-current-scope"
+  ],
+  "expected_required_ids": [
+    "current-scope"
+  ],
+  "expected_resume_state": {
+    "required_ids": [
+      "current-scope"
+    ],
+    "excluded_ids": [
+      "conflicting-scope"
+    ],
+    "constraint_ids": [],
+    "decision_ids": [],
+    "artifact_ref_ids": [],
+    "open_question_ids": []
+  },
+  "notes": [
+    "This fixture captures duplicate and conflict behavior without requiring future dedupe logic."
+  ],
+  "mode_config": {
+    "durable": {
+      "max_items": 3,
+      "max_tokens": 90
+    },
+    "carry": {
+      "max_items": 2,
+      "max_tokens": 60,
+      "mode": "advisory"
+    }
+  }
+}

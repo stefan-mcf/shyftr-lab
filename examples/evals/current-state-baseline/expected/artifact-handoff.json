@@ -1,0 +1,11 @@
+{
+  "fixture_id": "artifact-handoff",
+  "mode_expectations": {
+    "carry": {
+      "min_resume_state_score": 0.25
+    },
+    "live": {
+      "min_preserved_artifact_ref_rate": 0.5
+    }
+  }
+}

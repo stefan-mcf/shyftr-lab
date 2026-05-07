@@ -1,0 +1,84 @@
+{
+  "fixture_id": "artifact-handoff",
+  "title": "Artifact handoff continuity",
+  "mode_support": [
+    "carry",
+    "live"
+  ],
+  "task_prompt": "Resume work that depends on a critical artifact reference and ensure the artifact survives the handoff.",
+  "durable_memories": [
+    {
+      "id": "artifact-policy",
+      "kind": "workflow",
+      "statement": "Important artifact references should remain explicit in handoff-oriented context."
+    }
+  ],
+  "continuity_entries": [
+    {
+      "result": "artifact_ref_survived",
+      "useful_ids": [
+        "artifact-policy"
+      ],
+      "harmful_ids": [],
+      "ignored_ids": [],
+      "missing_notes": [],
+      "promote_notes": []
+    }
+  ],
+  "live_context_entries": [
+    {
+      "id": "artifact-ref",
+      "entry_kind": "active_artifact",
+      "content": "docs/status/current-state-baseline-summary.json is the comparison contract artifact.",
+      "retention_hint": "candidate",
+      "sensitivity_hint": "public"
+    },
+    {
+      "id": "artifact-decision",
+      "entry_kind": "decision",
+      "content": "Future changes must compare against the summary artifact before final review.",
+      "retention_hint": "candidate",
+      "sensitivity_hint": "public"
+    }
+  ],
+  "expected_useful_ids": [
+    "artifact-policy",
+    "artifact-ref",
+    "artifact-decision"
+  ],
+  "expected_stale_ids": [],
+  "expected_harmful_ids": [],
+  "expected_ignored_ids": [],
+  "expected_required_ids": [
+    "artifact-ref"
+  ],
+  "expected_resume_state": {
+    "required_ids": [
+      "artifact-ref",
+      "artifact-decision"
+    ],
+    "excluded_ids": [],
+    "constraint_ids": [],
+    "decision_ids": [
+      "artifact-decision"
+    ],
+    "artifact_ref_ids": [
+      "artifact-ref"
+    ],
+    "open_question_ids": []
+  },
+  "notes": [
+    "Artifact survival is the primary measurement target."
+  ],
+  "mode_config": {
+    "carry": {
+      "max_items": 2,
+      "max_tokens": 70,
+      "mode": "advisory"
+    },
+    "live": {
+      "max_items": 2,
+      "max_tokens": 70
+    }
+  }
+}

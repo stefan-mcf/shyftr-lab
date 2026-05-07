@@ -552,13 +552,13 @@ def _rebuild_retrieval_logs(conn: sqlite3.Connection, cell: Path) -> None:
             "VALUES (?, ?, ?, ?, ?, ?)",
             (
                 record.get("retrieval_id"),
-                record.get("cell_id"),
+                record.get("cell_id") or _read_cell_id(cell),
                 record.get("query"),
                 json.dumps(record.get("selected_ids", []), sort_keys=True)
                 if record.get("selected_ids") is not None else None,
                 json.dumps(record.get("score_traces"), sort_keys=True)
                 if record.get("score_traces") is not None else None,
-                record.get("logged_at"),
+                record.get("logged_at") or record.get("generated_at"),
             ),
         )
 

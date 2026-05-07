@@ -1,24 +1,31 @@
-"""Bounded memory Loadout assembly for ShyftR agents.
+"""Bounded memory pack assembly for ShyftR agents.
 
-Builds trust-labeled, token-bounded memory packages from Cell ledgers
-before agent execution.  Each Loadout item carries explicit trust tier
-and provenance; raw operational state is rejected; Fragments are
-background-only unless explicitly requested.
+Pack is the canonical public memory-bundle surface. Loadout remains a
+compatibility alias during Phase 1 stabilization so existing imports and
+ledger readers continue to work while first-party code converges on one
+implementation path.
 
-ShyftR doctrine: JSONL ledgers are canonical truth; retrieval/index
-layers are rebuildable acceleration; Loadout is application.
+Builds trust-labeled, token-bounded memory packages from Cell ledgers before
+agent execution. Each item carries explicit trust tier and provenance; raw
+operational state is rejected; candidates are background-only unless
+explicitly requested.
+
+ShyftR doctrine: JSONL ledgers are canonical truth; retrieval/index layers are
+rebuildable acceleration; the pack is application.
 """
 from __future__ import annotations
 
 import json
 import re
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+from .decay import score_memory_decay
 from .ledger import append_jsonl, read_jsonl
+from .ledger_state import latest_by_key
 from .mutations import active_charge_ids
 from .frontier import project_confidence_state
 from .policy import check_source_boundary  # noqa: F401 (re-exported for downstream)
@@ -84,6 +91,48 @@ def estimate_tokens(text: str) -> int:
     if not text:
         return 0
     return len(text.split())
+
+
+def _terms(value: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9_]+", str(value or "").lower()))
+
+
+def _query_sparse_score(query: str, candidate: CandidateItem) -> float:
+    """Return a simple lexical score for loadout query relevance.
+
+    Loadout candidates are assembled directly from ledgers, so they may not
+    arrive with sparse/vector scores already populated. This deterministic
+    score keeps pack assembly query-sensitive without depending on rebuildable
+    indexes.
+    """
+    query_terms = _terms(query)
+    if not query_terms:
+        return 0.0
+    haystack = " ".join(
+        [
+            candidate.statement,
+            candidate.rationale or "",
+            candidate.kind or "",
+            " ".join(candidate.tags),
+        ]
+    )
+    overlap = query_terms & _terms(haystack)
+    if not overlap:
+        return 0.0
+    return min(1.0, len(overlap) / max(len(query_terms), 1))
+
+
+def _apply_query_sparse_scores(query: str, candidates: Sequence[CandidateItem]) -> List[CandidateItem]:
+    if not query or not query.strip():
+        return list(candidates)
+    scored: List[CandidateItem] = []
+    for candidate in candidates:
+        score = _query_sparse_score(query, candidate)
+        if score <= candidate.sparse_score:
+            scored.append(candidate)
+        else:
+            scored.append(replace(candidate, sparse_score=score))
+    return scored
 
 
 # ---------------------------------------------------------------------------
@@ -218,26 +267,34 @@ class LoadoutItem:
 
 @dataclass(frozen=True)
 class RetrievalLog:
-    """Retrieval log with selected IDs, score traces, and retrieval_id."""
+    """Retrieval log with canonical and compatibility identifiers."""
 
     retrieval_id: str = ""
+    cell_id: str = ""
+    pack_id: Optional[str] = None
     loadout_id: Optional[str] = None
     selected_ids: List[str] = field(default_factory=list)
     score_traces: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     query: str = ""
+    logged_at: str = ""
     generated_at: str = ""
     candidate_ids: List[str] = field(default_factory=list)
     caution_ids: List[str] = field(default_factory=list)
     suppressed_ids: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        canonical_pack_id = self.pack_id or self.loadout_id
+        canonical_logged_at = self.logged_at or self.generated_at
         return {
             "retrieval_id": self.retrieval_id,
-            "loadout_id": self.loadout_id,
+            "cell_id": self.cell_id,
+            "pack_id": canonical_pack_id,
+            "loadout_id": self.loadout_id or canonical_pack_id,
             "selected_ids": self.selected_ids,
             "score_traces": self.score_traces,
             "query": self.query,
-            "generated_at": self.generated_at,
+            "logged_at": canonical_logged_at,
+            "generated_at": self.generated_at or canonical_logged_at,
             "candidate_ids": list(self.candidate_ids),
             "caution_ids": list(self.caution_ids),
             "suppressed_ids": list(self.suppressed_ids),
@@ -245,7 +302,16 @@ class RetrievalLog:
 
     @classmethod
     def from_dict(cls, payload: Dict[str, Any]) -> "RetrievalLog":
-        return cls(**{k: v for k, v in payload.items() if k in cls.__dataclass_fields__})
+        data = dict(payload)
+        if "pack_id" not in data and data.get("loadout_id") is not None:
+            data["pack_id"] = data.get("loadout_id")
+        if "loadout_id" not in data and data.get("pack_id") is not None:
+            data["loadout_id"] = data.get("pack_id")
+        if "logged_at" not in data and data.get("generated_at") is not None:
+            data["logged_at"] = data.get("generated_at")
+        if "generated_at" not in data and data.get("logged_at") is not None:
+            data["generated_at"] = data.get("logged_at")
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +320,7 @@ class RetrievalLog:
 
 @dataclass(frozen=True)
 class AssembledLoadout:
-    """A fully assembled Loadout with items, limits, and retrieval log."""
+    """A fully assembled pack with loadout compatibility aliases."""
 
     loadout_id: str
     cell_id: str
@@ -265,8 +331,13 @@ class AssembledLoadout:
     retrieval_log: RetrievalLog
     generated_at: str
 
+    @property
+    def pack_id(self) -> str:
+        return self.loadout_id
+
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "pack_id": self.pack_id,
             "loadout_id": self.loadout_id,
             "cell_id": self.cell_id,
             "task_id": self.task_id,
@@ -275,6 +346,7 @@ class AssembledLoadout:
             "total_items": self.total_items,
             "retrieval_log": self.retrieval_log.to_dict(),
             "generated_at": self.generated_at,
+            "logged_at": self.generated_at,
         }
 
     @classmethod
@@ -282,7 +354,7 @@ class AssembledLoadout:
         items = [LoadoutItem.from_dict(i) for i in payload.get("items", [])]
         log = RetrievalLog.from_dict(payload.get("retrieval_log", {}))
         return cls(
-            loadout_id=payload["loadout_id"],
+            loadout_id=payload.get("loadout_id") or payload["pack_id"],
             cell_id=payload["cell_id"],
             task_id=payload["task_id"],
             items=items,
@@ -337,11 +409,13 @@ def _read_cell_id(cell_path: Path) -> str:
 
 
 def _read_traces(cell_path: Path) -> List[Dict[str, Any]]:
-    """Read approved traces from traces/approved.jsonl."""
+    """Read approved traces using latest-row-wins append-only semantics."""
     ledger = cell_path / "traces" / "approved.jsonl"
     if not ledger.exists():
         return []
-    return [record for _, record in read_jsonl(ledger) if record.get("status", "approved") == "approved"]
+    records = [record for _, record in read_jsonl(ledger)]
+    latest_records = latest_by_key(records, "trace_id")
+    return [record for record in latest_records if record.get("status", "approved") == "approved"]
 
 
 def _read_alloys(cell_path: Path) -> List[Dict[str, Any]]:
@@ -385,6 +459,7 @@ def _build_candidate_from_trace(record: Dict[str, Any]) -> CandidateItem:
     """
     kind = record.get("kind")
     negative_space_kind = kind if (kind and str(kind).lower() in NEGATIVE_SPACE_KINDS) else None
+    decay_score = score_memory_decay(record).combined
     return CandidateItem(
         item_id=record.get("trace_id", ""),
         cell_id=record.get("cell_id", ""),
@@ -397,6 +472,7 @@ def _build_candidate_from_trace(record: Dict[str, Any]) -> CandidateItem:
         confidence=record.get("confidence"),
         success_count=record.get("success_count", 0),
         failure_count=record.get("failure_count", 0),
+        decay=decay_score,
         negative_space_kind=negative_space_kind,
         related_positive_ids=record.get("related_positive_ids", []),
     )
@@ -486,10 +562,13 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
     if not task.query or not task.query.strip():
         retrieval_log = RetrievalLog(
             retrieval_id=f"rl-{uuid.uuid4().hex[:12]}",
+            cell_id=cell_id,
+            pack_id=loadout_id,
             loadout_id=loadout_id,
             selected_ids=[],
             score_traces={},
             query=task.query,
+            logged_at=now,
             generated_at=now,
         )
         if not task.dry_run:
@@ -552,6 +631,11 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
     # Filter by requested trust tiers if specified
     if task.requested_trust_tiers:
         candidates = [c for c in candidates if c.trust_tier in task.requested_trust_tiers]
+
+    # Ledger-built candidates do not necessarily carry sparse/vector scores.
+    # Apply a deterministic query-text score before hybrid fusion so loadouts
+    # and continuity packs are actually sensitive to the runtime request.
+    candidates = _apply_query_sparse_scores(task.query, candidates)
 
     # Score via hybrid search
     results = hybrid_search(
@@ -669,10 +753,13 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
 
     retrieval_log = RetrievalLog(
         retrieval_id=f"rl-{uuid.uuid4().hex[:12]}",
+        cell_id=cell_id,
+        pack_id=loadout_id,
         loadout_id=loadout_id,
         selected_ids=selected_ids,
         score_traces=score_traces,
         query=task.query,
+        logged_at=now,
         generated_at=now,
         candidate_ids=candidate_ids,
         caution_ids=caution_ids,
@@ -695,3 +782,29 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
         retrieval_log=retrieval_log,
         generated_at=now,
     )
+
+
+# Canonical pack aliases (loadout names remain compatibility exports)
+PackTaskInput = LoadoutTaskInput
+PackItem = LoadoutItem
+AssembledPack = AssembledLoadout
+
+
+def assemble_pack(task: PackTaskInput) -> AssembledPack:
+    return assemble_loadout(task)
+
+
+__all__ = [
+    "PackTaskInput",
+    "PackItem",
+    "AssembledPack",
+    "RetrievalLog",
+    "LoadoutTaskInput",
+    "LoadoutItem",
+    "AssembledLoadout",
+    "assemble_pack",
+    "assemble_loadout",
+    "estimate_tokens",
+    "is_operational_state",
+    "LOADOUT_ROLES",
+]
