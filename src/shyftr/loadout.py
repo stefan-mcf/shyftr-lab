@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
@@ -85,6 +85,48 @@ def estimate_tokens(text: str) -> int:
     if not text:
         return 0
     return len(text.split())
+
+
+def _terms(value: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9_]+", str(value or "").lower()))
+
+
+def _query_sparse_score(query: str, candidate: CandidateItem) -> float:
+    """Return a simple lexical score for loadout query relevance.
+
+    Loadout candidates are assembled directly from ledgers, so they may not
+    arrive with sparse/vector scores already populated. This deterministic
+    score keeps pack assembly query-sensitive without depending on rebuildable
+    indexes.
+    """
+    query_terms = _terms(query)
+    if not query_terms:
+        return 0.0
+    haystack = " ".join(
+        [
+            candidate.statement,
+            candidate.rationale or "",
+            candidate.kind or "",
+            " ".join(candidate.tags),
+        ]
+    )
+    overlap = query_terms & _terms(haystack)
+    if not overlap:
+        return 0.0
+    return min(1.0, len(overlap) / max(len(query_terms), 1))
+
+
+def _apply_query_sparse_scores(query: str, candidates: Sequence[CandidateItem]) -> List[CandidateItem]:
+    if not query or not query.strip():
+        return list(candidates)
+    scored: List[CandidateItem] = []
+    for candidate in candidates:
+        score = _query_sparse_score(query, candidate)
+        if score <= candidate.sparse_score:
+            scored.append(candidate)
+        else:
+            scored.append(replace(candidate, sparse_score=score))
+    return scored
 
 
 # ---------------------------------------------------------------------------
@@ -555,6 +597,11 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
     # Filter by requested trust tiers if specified
     if task.requested_trust_tiers:
         candidates = [c for c in candidates if c.trust_tier in task.requested_trust_tiers]
+
+    # Ledger-built candidates do not necessarily carry sparse/vector scores.
+    # Apply a deterministic query-text score before hybrid fusion so loadouts
+    # and continuity packs are actually sensitive to the runtime request.
+    candidates = _apply_query_sparse_scores(task.query, candidates)
 
     # Score via hybrid search
     results = hybrid_search(

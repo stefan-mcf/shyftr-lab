@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -9,6 +10,8 @@ import pytest
 fastapi = pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
+from shyftr.layout import init_cell
+from shyftr.provider.memory import remember
 from shyftr.server import _get_app, main, service_dependencies_available
 
 
@@ -307,6 +310,87 @@ class TestEdgeCases:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Live context optimization endpoints
+# ---------------------------------------------------------------------------
+
+
+def test_live_context_http_endpoints_capture_pack_harvest_and_status(client: TestClient, tmp_path: Path) -> None:
+    live_cell = init_cell(tmp_path, "live", cell_type="live_context")
+    continuity_cell = init_cell(tmp_path, "continuity", cell_type="continuity")
+    memory_cell = init_cell(tmp_path, "memory", cell_type="memory")
+
+    capture_resp = client.post(
+        "/live-context/capture",
+        json={
+            "cell_path": str(live_cell),
+            "runtime_id": "synthetic-runtime",
+            "session_id": "synthetic-session",
+            "task_id": "synthetic-task",
+            "entry_kind": "decision",
+            "content": "Bounded packs keep prompt bloat under runtime control.",
+            "source_ref": "synthetic:http-test",
+            "retention_hint": "candidate",
+            "sensitivity_hint": "public",
+            "write": True,
+        },
+    )
+    assert capture_resp.status_code == 200
+    assert capture_resp.json()["status"] == "ok"
+
+    pack_resp = client.post(
+        "/live-context/pack",
+        json={
+            "cell_path": str(live_cell),
+            "runtime_id": "synthetic-runtime",
+            "session_id": "synthetic-session",
+            "query": "bounded prompt",
+            "write": True,
+        },
+    )
+    assert pack_resp.status_code == 200
+    assert pack_resp.json()["advisory_only"] is True
+    assert pack_resp.json()["items"][0]["entry_kind"] == "decision"
+
+    harvest_resp = client.post(
+        "/live-context/harvest",
+        json={
+            "live_cell_path": str(live_cell),
+            "continuity_cell_path": str(continuity_cell),
+            "memory_cell_path": str(memory_cell),
+            "runtime_id": "synthetic-runtime",
+            "session_id": "synthetic-session",
+            "write": True,
+        },
+    )
+    assert harvest_resp.status_code == 200
+    assert harvest_resp.json()["status"] == "ok"
+    assert harvest_resp.json()["review_gated"] is True
+
+    status_resp = client.get("/live-context/status", params={"cell_path": str(live_cell)})
+    assert status_resp.status_code == 200
+    assert status_resp.json()["counts"] == {"entries": 1, "packs": 1, "harvests": 1, "harvest_proposals": 1}
+
+
+def test_live_context_http_capture_is_dry_run_by_default(client: TestClient, tmp_path: Path) -> None:
+    live_cell = init_cell(tmp_path, "live", cell_type="live_context")
+    resp = client.post(
+        "/live-context/capture",
+        json={
+            "cell_path": str(live_cell),
+            "runtime_id": "synthetic-runtime",
+            "session_id": "synthetic-session",
+            "task_id": "synthetic-task",
+            "entry_kind": "active_goal",
+            "content": "Dry-run capture should not append ledgers.",
+            "source_ref": "synthetic:http-test",
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "dry_run"
+    assert (live_cell / "ledger" / "live_context_entries.jsonl").read_text(encoding="utf-8") == ""
+
+
 def _make_config_stub(**kwargs: object):
     """Return a simple stub object with attribute access."""
 
@@ -329,3 +413,97 @@ def _make_input_stub(**kwargs: object):
     for key, val in kwargs.items():
         setattr(stub, key, val)
     return stub
+
+
+class TestContinuity:
+    def test_continuity_pack_feedback_and_status(self, client: TestClient, tmp_path: Path) -> None:
+        memory_cell = init_cell(tmp_path, "memory", cell_type="memory")
+        continuity_cell = init_cell(tmp_path, "continuity", cell_type="continuity")
+        remembered = remember(memory_cell, "Runtime context compression should request a continuity pack before trimming.", "workflow")
+
+        pack_resp = client.post(
+            "/continuity/pack",
+            json={
+                "memory_cell_path": str(memory_cell),
+                "continuity_cell_path": str(continuity_cell),
+                "runtime_id": "http-runtime",
+                "session_id": "session",
+                "compaction_id": "cmp",
+                "query": "context compression continuity",
+                "mode": "advisory",
+                "max_items": 2,
+                "max_tokens": 80,
+                "write": True,
+            },
+        )
+        assert pack_resp.status_code == 200
+        pack = pack_resp.json()
+        assert pack["status"] == "ok"
+        assert pack["items"][0]["memory_id"] == remembered.memory_id
+
+        feedback_resp = client.post(
+            "/continuity/feedback",
+            json={
+                "continuity_cell_path": str(continuity_cell),
+                "continuity_pack_id": pack["continuity_pack_id"],
+                "runtime_id": "http-runtime",
+                "session_id": "session",
+                "compaction_id": "cmp",
+                "result": "resumed_successfully",
+                "useful_memory_ids": [remembered.memory_id],
+                "write": True,
+            },
+        )
+        assert feedback_resp.status_code == 200
+        assert feedback_resp.json()["status"] == "ok"
+
+        status_resp = client.get("/continuity/status", params={"continuity_cell_path": str(continuity_cell)})
+        assert status_resp.status_code == 200
+        assert status_resp.json()["counts"]["packs"] == 1
+        assert status_resp.json()["counts"]["feedback"] == 1
+
+    def test_carry_alias_pack_feedback_and_status(self, client: TestClient, tmp_path: Path) -> None:
+        memory_cell = init_cell(tmp_path, "memory", cell_type="memory")
+        carry_cell = init_cell(tmp_path, "carry", cell_type="continuity")
+        remembered = remember(memory_cell, "Runtime context compression should request a carry pack before trimming.", "workflow")
+
+        pack_resp = client.post(
+            "/carry/pack",
+            json={
+                "memory_cell_path": str(memory_cell),
+                "carry_cell_path": str(carry_cell),
+                "runtime_id": "http-runtime",
+                "session_id": "session",
+                "compaction_id": "cmp",
+                "query": "context compression carry",
+                "mode": "advisory",
+                "max_items": 2,
+                "max_tokens": 80,
+                "write": True,
+            },
+        )
+        assert pack_resp.status_code == 200
+        pack = pack_resp.json()
+        assert pack["status"] == "ok"
+        assert pack["items"][0]["memory_id"] == remembered.memory_id
+
+        feedback_resp = client.post(
+            "/carry/feedback",
+            json={
+                "carry_cell_path": str(carry_cell),
+                "carry_pack_id": pack["continuity_pack_id"],
+                "runtime_id": "http-runtime",
+                "session_id": "session",
+                "compaction_id": "cmp",
+                "result": "resumed_successfully",
+                "useful_memory_ids": [remembered.memory_id],
+                "write": True,
+            },
+        )
+        assert feedback_resp.status_code == 200
+        assert feedback_resp.json()["status"] == "ok"
+
+        status_resp = client.get("/carry/status", params={"carry_cell_path": str(carry_cell)})
+        assert status_resp.status_code == 200
+        assert status_resp.json()["counts"]["packs"] == 1
+        assert status_resp.json()["counts"]["feedback"] == 1

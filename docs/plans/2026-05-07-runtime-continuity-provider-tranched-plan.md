@@ -32,6 +32,8 @@ ShyftR can attach to a runtime's memory path and context-compaction path as two 
 
 The continuity provider assists a runtime compactor. It does not claim hosted operation, multi-tenant operation, real-data pilots, or private ranking/scoring behavior in public `main`.
 
+A follow-on context-optimization plan may add a live context cell as a third role. That role captures high-churn working context during a session, then uses session-close harvest to classify what should be discarded, archived, proposed for memory, or routed into continuity feedback. It should not be folded into the continuity cell by default because live working state and context-management evidence have different retention and promotion rules.
+
 ## Human input requirement
 
 None for tranches 0 through 12 when implemented against synthetic fixtures and repo-local temporary cells.

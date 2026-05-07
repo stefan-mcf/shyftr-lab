@@ -23,6 +23,16 @@ TOOL_NAMES = (
     "shyftr_profile",
     "shyftr_remember",
     "shyftr_record_feedback",
+    "shyftr_carry_pack",
+    "shyftr_carry_feedback",
+    "shyftr_carry_status",
+    "shyftr_continuity_pack",
+    "shyftr_continuity_feedback",
+    "shyftr_continuity_status",
+    "shyftr_live_context_capture",
+    "shyftr_live_context_pack",
+    "shyftr_session_harvest",
+    "shyftr_live_context_status",
 )
 
 JsonArgs = str | bytes | bytearray | Mapping[str, Any]
@@ -176,6 +186,150 @@ def shyftr_record_feedback_bridge(args: JsonArgs) -> dict[str, Any]:
     }
 
 
+
+
+def _with_continuity_aliases(payload: Mapping[str, Any]) -> dict[str, Any]:
+    mapped = dict(payload)
+    if "continuity_cell_path" not in mapped and "carry_cell_path" in mapped:
+        mapped["continuity_cell_path"] = mapped["carry_cell_path"]
+    if "continuity_pack_id" not in mapped and "carry_pack_id" in mapped:
+        mapped["continuity_pack_id"] = mapped["carry_pack_id"]
+    return mapped
+
+def shyftr_continuity_pack_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _with_continuity_aliases(_load_payload(args))
+    from shyftr.continuity import ContinuityPackRequest, assemble_continuity_pack
+
+    request = ContinuityPackRequest(
+        memory_cell_path=str(_require_cell_path_named(payload, "memory_cell_path")),
+        continuity_cell_path=str(_require_cell_path_named(payload, "continuity_cell_path")),
+        runtime_id=str(payload.get("runtime_id") or "mcp"),
+        session_id=_require_text(payload.get("session_id"), "session_id"),
+        compaction_id=_require_text(payload.get("compaction_id"), "compaction_id"),
+        query=_require_text(payload.get("query"), "query"),
+        trigger=str(payload.get("trigger") or "context_pressure"),
+        mode=str(payload.get("mode") or "shadow"),
+        max_items=_bounded_int(payload.get("max_items", 8), "max_items", minimum=0, maximum=50),
+        max_tokens=_bounded_int(payload.get("max_tokens", 1200), "max_tokens", minimum=1, maximum=12000),
+        include_candidates=bool(payload.get("include_candidates", False)),
+        retrieval_mode=str(payload.get("retrieval_mode") or "balanced"),
+        write=bool(payload.get("write", False)),
+        metadata=_optional_mapping(payload.get("metadata")) or {},
+    )
+    result = assemble_continuity_pack(request).to_dict()
+    return {"tool": "shyftr_continuity_pack", "status": result.get("status"), "write": bool(payload.get("write", False)), **result}
+
+
+def shyftr_continuity_feedback_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _with_continuity_aliases(_load_payload(args))
+    from shyftr.continuity import ContinuityFeedback, record_continuity_feedback
+
+    feedback = ContinuityFeedback(
+        continuity_cell_path=str(_require_cell_path_named(payload, "continuity_cell_path")),
+        continuity_pack_id=_require_text(payload.get("continuity_pack_id"), "continuity_pack_id"),
+        runtime_id=str(payload.get("runtime_id") or "mcp"),
+        session_id=_require_text(payload.get("session_id"), "session_id"),
+        compaction_id=_require_text(payload.get("compaction_id"), "compaction_id"),
+        result=_require_text(payload.get("result"), "result"),
+        useful_memory_ids=_optional_str_list(payload.get("useful_memory_ids")) or [],
+        harmful_memory_ids=_optional_str_list(payload.get("harmful_memory_ids")) or [],
+        ignored_memory_ids=_optional_str_list(payload.get("ignored_memory_ids")) or [],
+        missing_notes=_optional_str_list(payload.get("missing_notes")) or [],
+        promote_notes=_optional_str_list(payload.get("promote_notes")) or [],
+        write=bool(payload.get("write", False)),
+        metadata=_optional_mapping(payload.get("metadata")) or {},
+    )
+    return {"tool": "shyftr_continuity_feedback", **record_continuity_feedback(feedback)}
+
+
+def shyftr_continuity_status_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _with_continuity_aliases(_load_payload(args))
+    from shyftr.continuity import continuity_status
+
+    return {"tool": "shyftr_continuity_status", **continuity_status(_require_cell_path_named(payload, "continuity_cell_path"))}
+
+
+
+
+
+
+def shyftr_carry_pack_bridge(args: JsonArgs) -> dict[str, Any]:
+    result = shyftr_continuity_pack_bridge(args)
+    return {**result, "tool": "shyftr_carry_pack"}
+
+
+def shyftr_carry_feedback_bridge(args: JsonArgs) -> dict[str, Any]:
+    result = shyftr_continuity_feedback_bridge(args)
+    return {**result, "tool": "shyftr_carry_feedback"}
+
+
+def shyftr_carry_status_bridge(args: JsonArgs) -> dict[str, Any]:
+    result = shyftr_continuity_status_bridge(args)
+    return {**result, "tool": "shyftr_carry_status"}
+
+def shyftr_live_context_capture_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _load_payload(args)
+    from shyftr.live_context import LiveContextCaptureRequest, capture_live_context
+
+    request = LiveContextCaptureRequest(
+        cell_path=str(_require_cell_path_named(payload, "cell_path")),
+        runtime_id=str(payload.get("runtime_id") or "mcp"),
+        session_id=_require_text(payload.get("session_id"), "session_id"),
+        task_id=str(payload.get("task_id") or "default-task"),
+        entry_kind=_require_text(payload.get("entry_kind") or payload.get("kind"), "entry_kind"),
+        content=_require_text(payload.get("content"), "content"),
+        source_ref=str(payload.get("source_ref") or "mcp"),
+        retention_hint=str(payload.get("retention_hint") or "session"),
+        sensitivity_hint=str(payload.get("sensitivity_hint") or "internal"),
+        metadata=_optional_mapping(payload.get("metadata")) or {},
+        write=bool(payload.get("write", False)),
+    )
+    return {"tool": "shyftr_live_context_capture", **capture_live_context(request)}
+
+
+def shyftr_live_context_pack_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _load_payload(args)
+    from shyftr.live_context import LiveContextPackRequest, build_live_context_pack
+
+    request = LiveContextPackRequest(
+        cell_path=str(_require_cell_path_named(payload, "cell_path")),
+        query=_require_text(payload.get("query"), "query"),
+        runtime_id=str(payload.get("runtime_id") or "mcp"),
+        session_id=_require_text(payload.get("session_id"), "session_id"),
+        max_items=_bounded_int(payload.get("max_items", 8), "max_items", minimum=0, maximum=100),
+        max_tokens=_bounded_int(payload.get("max_tokens", 1200), "max_tokens", minimum=1, maximum=12000),
+        suppress_entry_ids=_optional_str_list(payload.get("suppress_entry_ids")) or [],
+        current_prompt_excerpts=_optional_str_list(payload.get("current_prompt_excerpts")) or [],
+        metadata=_optional_mapping(payload.get("metadata")) or {},
+        write=bool(payload.get("write", False)),
+    )
+    return {"tool": "shyftr_live_context_pack", "status": "ok", "write": bool(payload.get("write", False)), **build_live_context_pack(request).to_dict()}
+
+
+def shyftr_session_harvest_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _load_payload(args)
+    from shyftr.live_context import SessionHarvestRequest, harvest_session
+
+    request = SessionHarvestRequest(
+        live_cell_path=str(_require_cell_path_named(payload, "live_cell_path")),
+        continuity_cell_path=str(_require_cell_path_named(payload, "continuity_cell_path")),
+        memory_cell_path=str(_require_cell_path_named(payload, "memory_cell_path")),
+        runtime_id=str(payload.get("runtime_id") or "mcp"),
+        session_id=_require_text(payload.get("session_id"), "session_id"),
+        write=bool(payload.get("write", False)),
+        allow_direct_durable_memory=bool(payload.get("allow_direct_durable_memory", False)),
+        metadata=_optional_mapping(payload.get("metadata")) or {},
+    )
+    return {"tool": "shyftr_session_harvest", **harvest_session(request).to_dict()}
+
+
+def shyftr_live_context_status_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _load_payload(args)
+    from shyftr.live_context import live_context_status
+
+    return {"tool": "shyftr_live_context_status", **live_context_status(_require_cell_path_named(payload, "cell_path"))}
+
+
 def create_mcp_server() -> Any:
     try:
         from mcp.server.fastmcp import FastMCP
@@ -264,6 +418,210 @@ def create_mcp_server() -> Any:
             }
         )
 
+    @server.tool(name="shyftr_continuity_pack")
+    def shyftr_continuity_pack_tool(
+        memory_cell_path: str,
+        continuity_cell_path: str,
+        query: str,
+        session_id: str,
+        compaction_id: str,
+        runtime_id: str = "mcp",
+        trigger: str = "context_pressure",
+        mode: str = "shadow",
+        max_items: int = 8,
+        max_tokens: int = 1200,
+        write: bool = False,
+    ) -> dict[str, Any]:
+        return shyftr_continuity_pack_bridge(
+            {
+                "memory_cell_path": memory_cell_path,
+                "continuity_cell_path": continuity_cell_path,
+                "query": query,
+                "session_id": session_id,
+                "compaction_id": compaction_id,
+                "runtime_id": runtime_id,
+                "trigger": trigger,
+                "mode": mode,
+                "max_items": max_items,
+                "max_tokens": max_tokens,
+                "write": write,
+            }
+        )
+
+    @server.tool(name="shyftr_continuity_feedback")
+    def shyftr_continuity_feedback_tool(
+        continuity_cell_path: str,
+        continuity_pack_id: str,
+        result: str,
+        session_id: str,
+        compaction_id: str,
+        runtime_id: str = "mcp",
+        useful_memory_ids: list[str] | None = None,
+        harmful_memory_ids: list[str] | None = None,
+        ignored_memory_ids: list[str] | None = None,
+        missing_notes: list[str] | None = None,
+        promote_notes: list[str] | None = None,
+        write: bool = False,
+    ) -> dict[str, Any]:
+        return shyftr_continuity_feedback_bridge(
+            {
+                "continuity_cell_path": continuity_cell_path,
+                "continuity_pack_id": continuity_pack_id,
+                "result": result,
+                "session_id": session_id,
+                "compaction_id": compaction_id,
+                "runtime_id": runtime_id,
+                "useful_memory_ids": useful_memory_ids,
+                "harmful_memory_ids": harmful_memory_ids,
+                "ignored_memory_ids": ignored_memory_ids,
+                "missing_notes": missing_notes,
+                "promote_notes": promote_notes,
+                "write": write,
+            }
+        )
+
+    @server.tool(name="shyftr_continuity_status")
+    def shyftr_continuity_status_tool(continuity_cell_path: str) -> dict[str, Any]:
+        return shyftr_continuity_status_bridge({"continuity_cell_path": continuity_cell_path})
+
+
+
+
+
+    @server.tool(name="shyftr_carry_pack")
+    def shyftr_carry_pack_tool(
+        memory_cell_path: str,
+        carry_cell_path: str,
+        query: str,
+        session_id: str,
+        compaction_id: str,
+        runtime_id: str = "mcp",
+        trigger: str = "context_pressure",
+        mode: str = "shadow",
+        max_items: int = 8,
+        max_tokens: int = 1200,
+        write: bool = False,
+    ) -> dict[str, Any]:
+        return shyftr_carry_pack_bridge(
+            {
+                "memory_cell_path": memory_cell_path,
+                "carry_cell_path": carry_cell_path,
+                "query": query,
+                "session_id": session_id,
+                "compaction_id": compaction_id,
+                "runtime_id": runtime_id,
+                "trigger": trigger,
+                "mode": mode,
+                "max_items": max_items,
+                "max_tokens": max_tokens,
+                "write": write,
+            }
+        )
+
+    @server.tool(name="shyftr_carry_feedback")
+    def shyftr_carry_feedback_tool(
+        carry_cell_path: str,
+        carry_pack_id: str,
+        result: str,
+        session_id: str,
+        compaction_id: str,
+        runtime_id: str = "mcp",
+        useful_memory_ids: list[str] | None = None,
+        harmful_memory_ids: list[str] | None = None,
+        ignored_memory_ids: list[str] | None = None,
+        missing_notes: list[str] | None = None,
+        promote_notes: list[str] | None = None,
+        write: bool = False,
+    ) -> dict[str, Any]:
+        return shyftr_carry_feedback_bridge(
+            {
+                "carry_cell_path": carry_cell_path,
+                "carry_pack_id": carry_pack_id,
+                "result": result,
+                "session_id": session_id,
+                "compaction_id": compaction_id,
+                "runtime_id": runtime_id,
+                "useful_memory_ids": useful_memory_ids,
+                "harmful_memory_ids": harmful_memory_ids,
+                "ignored_memory_ids": ignored_memory_ids,
+                "missing_notes": missing_notes,
+                "promote_notes": promote_notes,
+                "write": write,
+            }
+        )
+
+    @server.tool(name="shyftr_carry_status")
+    def shyftr_carry_status_tool(carry_cell_path: str) -> dict[str, Any]:
+        return shyftr_carry_status_bridge({"carry_cell_path": carry_cell_path})
+
+    @server.tool(name="shyftr_live_context_capture")
+    def shyftr_live_context_capture_tool(
+        cell_path: str,
+        content: str,
+        session_id: str,
+        entry_kind: str,
+        runtime_id: str = "mcp",
+        task_id: str = "default-task",
+        source_ref: str = "mcp",
+        retention_hint: str = "session",
+        sensitivity_hint: str = "internal",
+        write: bool = False,
+    ) -> dict[str, Any]:
+        return shyftr_live_context_capture_bridge({
+            "cell_path": cell_path,
+            "content": content,
+            "session_id": session_id,
+            "entry_kind": entry_kind,
+            "runtime_id": runtime_id,
+            "task_id": task_id,
+            "source_ref": source_ref,
+            "retention_hint": retention_hint,
+            "sensitivity_hint": sensitivity_hint,
+            "write": write,
+        })
+
+    @server.tool(name="shyftr_live_context_pack")
+    def shyftr_live_context_pack_tool(
+        cell_path: str,
+        query: str,
+        session_id: str,
+        runtime_id: str = "mcp",
+        max_items: int = 8,
+        max_tokens: int = 1200,
+        write: bool = False,
+    ) -> dict[str, Any]:
+        return shyftr_live_context_pack_bridge({
+            "cell_path": cell_path,
+            "query": query,
+            "session_id": session_id,
+            "runtime_id": runtime_id,
+            "max_items": max_items,
+            "max_tokens": max_tokens,
+            "write": write,
+        })
+
+    @server.tool(name="shyftr_session_harvest")
+    def shyftr_session_harvest_tool(
+        live_cell_path: str,
+        continuity_cell_path: str,
+        memory_cell_path: str,
+        session_id: str,
+        runtime_id: str = "mcp",
+        write: bool = False,
+    ) -> dict[str, Any]:
+        return shyftr_session_harvest_bridge({
+            "live_cell_path": live_cell_path,
+            "continuity_cell_path": continuity_cell_path,
+            "memory_cell_path": memory_cell_path,
+            "session_id": session_id,
+            "runtime_id": runtime_id,
+            "write": write,
+        })
+
+    @server.tool(name="shyftr_live_context_status")
+    def shyftr_live_context_status_tool(cell_path: str) -> dict[str, Any]:
+        return shyftr_live_context_status_bridge({"cell_path": cell_path})
+
     return server
 
 
@@ -300,6 +658,15 @@ def _require_cell_path(payload: Mapping[str, Any]) -> Path:
     manifest = path / "config" / "cell_manifest.json"
     if not manifest.exists():
         raise ValueError(f"cell_path is not a ShyftR cell: {path}")
+    return path
+
+
+def _require_cell_path_named(payload: Mapping[str, Any], field_name: str) -> Path:
+    raw = _require_text(payload.get(field_name), field_name)
+    path = Path(raw).expanduser()
+    manifest = path / "config" / "cell_manifest.json"
+    if not manifest.exists():
+        raise ValueError(f"{field_name} is not a ShyftR cell: {path}")
     return path
 
 
@@ -423,6 +790,16 @@ def _handle_json_rpc_message(message: dict[str, Any]) -> dict[str, Any] | None:
                 "shyftr_profile": shyftr_profile_bridge,
                 "shyftr_remember": shyftr_remember_bridge,
                 "shyftr_record_feedback": shyftr_record_feedback_bridge,
+                "shyftr_carry_pack": shyftr_carry_pack_bridge,
+                "shyftr_carry_feedback": shyftr_carry_feedback_bridge,
+                "shyftr_carry_status": shyftr_carry_status_bridge,
+                "shyftr_continuity_pack": shyftr_continuity_pack_bridge,
+                "shyftr_continuity_feedback": shyftr_continuity_feedback_bridge,
+                "shyftr_continuity_status": shyftr_continuity_status_bridge,
+                "shyftr_live_context_capture": shyftr_live_context_capture_bridge,
+                "shyftr_live_context_pack": shyftr_live_context_pack_bridge,
+                "shyftr_session_harvest": shyftr_session_harvest_bridge,
+                "shyftr_live_context_status": shyftr_live_context_status_bridge,
             }
             if name not in call_map:
                 raise ValueError(f"unknown tool: {name}")
@@ -447,6 +824,16 @@ def _tool_descriptors() -> list[dict[str, Any]]:
         _tool_descriptor("shyftr_profile", "Build a compact profile projection from reviewed memory.", ["cell_path"]),
         _tool_descriptor("shyftr_remember", "Preview or write explicit memory through ShyftR policy.", ["cell_path", "statement", "kind"]),
         _tool_descriptor("shyftr_record_feedback", "Preview or record ShyftR pack feedback.", ["cell_path", "pack_id", "result"]),
+        _tool_descriptor("shyftr_carry_pack", "Build an opt-in runtime carry pack; dry-run unless write=true.", ["memory_cell_path", "carry_cell_path", "query", "session_id", "compaction_id"]),
+        _tool_descriptor("shyftr_carry_feedback", "Preview or record runtime carry feedback.", ["carry_cell_path", "carry_pack_id", "result", "session_id", "compaction_id"]),
+        _tool_descriptor("shyftr_carry_status", "Summarize carry ledgers for a cell.", ["carry_cell_path"]),
+        _tool_descriptor("shyftr_continuity_pack", "Compatibility alias: build an opt-in runtime carry pack; dry-run unless write=true.", ["memory_cell_path", "continuity_cell_path", "query", "session_id", "compaction_id"]),
+        _tool_descriptor("shyftr_continuity_feedback", "Compatibility alias: preview or record runtime carry feedback.", ["continuity_cell_path", "continuity_pack_id", "result", "session_id", "compaction_id"]),
+        _tool_descriptor("shyftr_continuity_status", "Compatibility alias: summarize carry ledgers for a cell.", ["continuity_cell_path"]),
+        _tool_descriptor("shyftr_live_context_capture", "Capture live working context; dry-run unless write=true.", ["cell_path", "content", "session_id", "entry_kind"]),
+        _tool_descriptor("shyftr_live_context_pack", "Build a bounded advisory live context pack.", ["cell_path", "query", "session_id"]),
+        _tool_descriptor("shyftr_session_harvest", "Classify session live context into review-gated harvest outputs.", ["live_cell_path", "continuity_cell_path", "memory_cell_path", "session_id"]),
+        _tool_descriptor("shyftr_live_context_status", "Summarize live context ledgers for a cell.", ["cell_path"]),
     ]
 
 

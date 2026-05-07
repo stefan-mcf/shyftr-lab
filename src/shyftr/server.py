@@ -144,6 +144,101 @@ def _register_routes(app: FastAPI) -> None:
         except Exception as exc:
             return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
 
+    def _carry_alias_payload(body: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(body)
+        if "continuity_cell_path" not in payload and "carry_cell_path" in payload:
+            payload["continuity_cell_path"] = payload["carry_cell_path"]
+        if "continuity_pack_id" not in payload and "carry_pack_id" in payload:
+            payload["continuity_pack_id"] = payload["carry_pack_id"]
+        return payload
+
+    async def _continuity_pack_response(request: Request) -> JSONResponse:
+        body = _carry_alias_payload(await _parse_body(request))
+        try:
+            from shyftr.continuity import ContinuityPackRequest, assemble_continuity_pack
+            payload = {k: v for k, v in body.items() if k in ContinuityPackRequest.__dataclass_fields__}
+            return JSONResponse(content=assemble_continuity_pack(ContinuityPackRequest(**payload)).to_dict())
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
+    @app.post("/carry/pack")
+    async def carry_pack(request: Request) -> JSONResponse:
+        return await _continuity_pack_response(request)
+
+    @app.post("/continuity/pack")
+    async def continuity_pack(request: Request) -> JSONResponse:
+        return await _continuity_pack_response(request)
+
+    async def _continuity_feedback_response(request: Request) -> JSONResponse:
+        body = _carry_alias_payload(await _parse_body(request))
+        try:
+            from shyftr.continuity import ContinuityFeedback, record_continuity_feedback
+            payload = {k: v for k, v in body.items() if k in ContinuityFeedback.__dataclass_fields__}
+            return JSONResponse(content=record_continuity_feedback(ContinuityFeedback(**payload)))
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
+    @app.post("/carry/feedback")
+    async def carry_feedback(request: Request) -> JSONResponse:
+        return await _continuity_feedback_response(request)
+
+    @app.post("/continuity/feedback")
+    async def continuity_feedback(request: Request) -> JSONResponse:
+        return await _continuity_feedback_response(request)
+
+    async def _continuity_status_response(cell_path: str) -> JSONResponse:
+        try:
+            from shyftr.continuity import continuity_status
+            return JSONResponse(content=continuity_status(cell_path))
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
+    @app.get("/carry/status")
+    async def carry_status_route(carry_cell_path: str) -> JSONResponse:
+        return await _continuity_status_response(carry_cell_path)
+
+    @app.get("/continuity/status")
+    async def continuity_status_route(continuity_cell_path: str) -> JSONResponse:
+        return await _continuity_status_response(continuity_cell_path)
+
+    @app.post("/live-context/capture")
+    async def live_context_capture(request: Request) -> JSONResponse:
+        body = await _parse_body(request)
+        try:
+            from shyftr.live_context import LiveContextCaptureRequest, capture_live_context
+            payload = {k: v for k, v in body.items() if k in LiveContextCaptureRequest.__dataclass_fields__}
+            return JSONResponse(content=capture_live_context(LiveContextCaptureRequest(**payload)))
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
+    @app.post("/live-context/pack")
+    async def live_context_pack(request: Request) -> JSONResponse:
+        body = await _parse_body(request)
+        try:
+            from shyftr.live_context import LiveContextPackRequest, build_live_context_pack
+            payload = {k: v for k, v in body.items() if k in LiveContextPackRequest.__dataclass_fields__}
+            return JSONResponse(content=build_live_context_pack(LiveContextPackRequest(**payload)).to_dict())
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
+    @app.post("/live-context/harvest")
+    async def live_context_harvest(request: Request) -> JSONResponse:
+        body = await _parse_body(request)
+        try:
+            from shyftr.live_context import SessionHarvestRequest, harvest_session
+            payload = {k: v for k, v in body.items() if k in SessionHarvestRequest.__dataclass_fields__}
+            return JSONResponse(content=harvest_session(SessionHarvestRequest(**payload)).to_dict())
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
+    @app.get("/live-context/status")
+    async def live_context_status_route(cell_path: str) -> JSONResponse:
+        try:
+            from shyftr.live_context import live_context_status
+            return JSONResponse(content=live_context_status(cell_path))
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
     @app.get("/evolution")
     async def evolution_list(cell_path: str, include_reviewed: bool = True) -> Dict[str, Any]:
         from shyftr.evolution import read_evolution_proposals

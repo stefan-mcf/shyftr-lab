@@ -15,6 +15,8 @@ External runtime -> feedback         -> ShyftR cell
 External runtime <- Proposals        <- ShyftR cell
 ```
 
+A context-optimization integration can add a structured session-harvest pathway on top of these flows. Session harvest is not a separate durable authority path: it is a session-close wrapper around evidence ingest, feedback, and proposal generation. The runtime sends live context closeout material; ShyftR classifies it into archive records, continuity feedback, memory candidates, and review-gated proposals.
+
 ### 1. evidence ingest
 
 The external runtime sends evidence to ShyftR: task closeouts, tool logs, chat

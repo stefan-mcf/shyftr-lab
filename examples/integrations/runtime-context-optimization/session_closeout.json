@@ -1,0 +1,36 @@
+{
+  "contract": "shyftr.runtime_context_optimization.session_closeout.v1",
+  "runtime_id": "synthetic-runtime",
+  "session_id": "demo-session",
+  "generated_at": "2026-05-07T00:05:00Z",
+  "real_runtime_profile_touched": false,
+  "review_gated": true,
+  "inputs": {
+    "live_context_fixture": "examples/integrations/runtime-context-optimization/live_context.jsonl",
+    "uses_real_transcript": false,
+    "uses_private_runtime_data": false
+  },
+  "pack_metrics": {
+    "max_items": 3,
+    "max_tokens": 80,
+    "selected_item_count": 2,
+    "estimated_pack_tokens": 25,
+    "duplicate_suppression_count": 1,
+    "stale_item_suppression_count": 0
+  },
+  "harvest": {
+    "bucket_counts": {
+      "discard": 0,
+      "archive": 0,
+      "continuity_feedback": 1,
+      "memory_candidate": 1,
+      "direct_durable_memory": 0,
+      "skill_proposal": 0
+    },
+    "memory_proposal_count": 1,
+    "continuity_improvement_proposal_count": 1,
+    "skill_proposal_count": 0,
+    "direct_durable_memory_writes": 0
+  },
+  "open_gate": "real-runtime pilot remains tranche 12 and requires explicit operator approval"
+}

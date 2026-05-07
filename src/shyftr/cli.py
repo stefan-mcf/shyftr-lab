@@ -380,6 +380,253 @@ def _add_feedback(sub: argparse.ArgumentParser) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: carry / continuity
+# ---------------------------------------------------------------------------
+
+
+def cmd_continuity_pack(args: argparse.Namespace) -> None:
+    from shyftr.continuity import ContinuityPackRequest, assemble_continuity_pack
+
+    if args.request_json:
+        payload = json.loads(Path(args.request_json).read_text(encoding="utf-8"))
+        request = ContinuityPackRequest.from_dict(payload)
+    else:
+        request = ContinuityPackRequest(
+            memory_cell_path=str(args.memory_cell_path),
+            continuity_cell_path=str(args.continuity_cell_path),
+            runtime_id=args.runtime_id,
+            session_id=args.session_id,
+            compaction_id=args.compaction_id,
+            query=args.query,
+            trigger=args.trigger,
+            mode=args.mode,
+            max_items=args.max_items,
+            max_tokens=args.max_tokens,
+            include_candidates=args.include_candidates,
+            retrieval_mode=args.retrieval_mode,
+            write=bool(args.write),
+            metadata=json.loads(args.metadata) if args.metadata else {},
+        )
+    _print_json(assemble_continuity_pack(request).to_dict())
+
+
+def cmd_continuity_feedback(args: argparse.Namespace) -> None:
+    from shyftr.continuity import ContinuityFeedback, record_continuity_feedback
+
+    if args.feedback_json:
+        payload = json.loads(Path(args.feedback_json).read_text(encoding="utf-8"))
+        feedback = ContinuityFeedback.from_dict(payload)
+    else:
+        feedback = ContinuityFeedback(
+            continuity_cell_path=str(args.continuity_cell_path),
+            continuity_pack_id=args.continuity_pack_id,
+            runtime_id=args.runtime_id,
+            session_id=args.session_id,
+            compaction_id=args.compaction_id,
+            result=args.result,
+            useful_memory_ids=args.useful.split(",") if args.useful else [],
+            harmful_memory_ids=args.harmful.split(",") if args.harmful else [],
+            ignored_memory_ids=args.ignored.split(",") if args.ignored else [],
+            missing_notes=args.missing_note or [],
+            promote_notes=args.promote_note or [],
+            write=bool(args.write),
+            metadata=json.loads(args.metadata) if args.metadata else {},
+        )
+    _print_json(record_continuity_feedback(feedback))
+
+
+def cmd_continuity_eval(args: argparse.Namespace) -> None:
+    from shyftr.continuity import evaluate_synthetic_continuity
+
+    _print_json(evaluate_synthetic_continuity(
+        memory_cell_path=args.memory_cell_path,
+        continuity_cell_path=args.continuity_cell_path,
+        runtime_id=args.runtime_id,
+        task_id=args.task_id,
+        query=args.query,
+        expected_terms=args.expected_term,
+        max_items=args.max_items,
+        max_tokens=args.max_tokens,
+        write=bool(args.write),
+    ))
+
+
+def cmd_continuity_status(args: argparse.Namespace) -> None:
+    from shyftr.continuity import continuity_status
+
+    _print_json(continuity_status(args.continuity_cell_path))
+
+
+def _add_continuity(sub: argparse.ArgumentParser, *, label: str = "continuity") -> None:
+    continuity_sub = sub.add_subparsers(dest="continuity_action", required=True)
+    noun = "carry" if label == "carry" else "continuity"
+
+    pack = continuity_sub.add_parser("pack", help=f"Build an opt-in runtime {noun} pack")
+    pack.add_argument("memory_cell_path", type=_cell_path, nargs="?", help="path to the durable memory cell")
+    pack.add_argument("continuity_cell_path", type=_cell_path, nargs="?", metavar="carry_cell_path" if label == "carry" else "continuity_cell_path", help=f"path to the {noun} cell")
+    pack.add_argument("query", type=str, nargs="?", help=f"{noun} query from the runtime compaction event")
+    pack.add_argument("--request-json", type=str, default=None, help="path to a ContinuityPackRequest JSON file")
+    pack.add_argument("--runtime-id", type=str, default="default", help="runtime identity")
+    pack.add_argument("--session-id", type=str, default="default-session", help="runtime session identity")
+    pack.add_argument("--compaction-id", type=str, default="default-compaction", help="compaction event identity")
+    pack.add_argument("--trigger", type=str, default="context_pressure", help="why continuity was requested")
+    pack.add_argument("--mode", type=str, default="shadow", choices=("off", "shadow", "advisory"), help=f"{noun} mode")
+    pack.add_argument("--max-items", type=int, default=8, help=f"maximum {noun} items")
+    pack.add_argument("--max-tokens", type=int, default=1200, help="maximum estimated tokens")
+    pack.add_argument("--include-candidates", action="store_true", default=False, help="include candidate-tier items")
+    pack.add_argument("--retrieval-mode", type=str, default="balanced", choices=("balanced", "conservative", "exploratory", "risk_averse", "audit", "rule_only", "low_latency"), help="retrieval mode for memory selection")
+    pack.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
+    pack.add_argument("--write", action="store_true", default=False, help=f"append {noun} ledgers after review")
+
+    feedback = continuity_sub.add_parser("feedback", help=f"Preview or record {noun} pack feedback")
+    feedback.add_argument("continuity_cell_path", type=_cell_path, nargs="?", metavar="carry_cell_path" if label == "carry" else "continuity_cell_path", help=f"path to the {noun} cell")
+    feedback.add_argument("continuity_pack_id", type=str, nargs="?", metavar="carry_pack_id" if label == "carry" else "continuity_pack_id", help=f"{noun} pack id")
+    feedback.add_argument("result", type=str, nargs="?", help="resume outcome")
+    feedback.add_argument("--feedback-json", type=str, default=None, help="path to a ContinuityFeedback JSON file")
+    feedback.add_argument("--runtime-id", type=str, default="default", help="runtime identity")
+    feedback.add_argument("--session-id", type=str, default="default-session", help="runtime session identity")
+    feedback.add_argument("--compaction-id", type=str, default="default-compaction", help="compaction event identity")
+    feedback.add_argument("--useful", type=str, default="", help="comma-separated useful memory ids")
+    feedback.add_argument("--harmful", type=str, default="", help="comma-separated harmful memory ids")
+    feedback.add_argument("--ignored", type=str, default="", help="comma-separated ignored memory ids")
+    feedback.add_argument("--missing-note", action="append", default=[], help=f"missing {noun} note")
+    feedback.add_argument("--promote-note", action="append", default=[], help="review-gated durable memory proposal")
+    feedback.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
+    feedback.add_argument("--write", action="store_true", default=False, help="append feedback ledgers after review")
+
+    eval_parser = continuity_sub.add_parser("eval", help=f"Run a deterministic synthetic {noun} evaluation")
+    eval_parser.add_argument("memory_cell_path", type=_cell_path, help="path to the durable memory cell")
+    eval_parser.add_argument("continuity_cell_path", type=_cell_path, metavar="carry_cell_path" if label == "carry" else "continuity_cell_path", help=f"path to the {noun} cell")
+    eval_parser.add_argument("query", type=str, help=f"{noun} query")
+    eval_parser.add_argument("--expected-term", action="append", required=True, help=f"term expected in the {noun} pack")
+    eval_parser.add_argument("--runtime-id", type=str, default="synthetic-runtime", help="runtime identity")
+    eval_parser.add_argument("--task-id", type=str, default="synthetic-eval", help="evaluation task id")
+    eval_parser.add_argument("--max-items", type=int, default=8, help=f"maximum {noun} items")
+    eval_parser.add_argument("--max-tokens", type=int, default=1200, help="maximum estimated tokens")
+    eval_parser.add_argument("--write", action="store_true", default=False, help="append eval report ledger")
+
+    status = continuity_sub.add_parser("status", help=f"Summarize {noun} ledgers")
+    status.add_argument("continuity_cell_path", type=_cell_path, metavar="carry_cell_path" if label == "carry" else "continuity_cell_path", help=f"path to the {noun} cell")
+
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: live-context
+# ---------------------------------------------------------------------------
+
+
+def cmd_live_context_capture(args: argparse.Namespace) -> None:
+    from shyftr.live_context import LiveContextCaptureRequest, capture_live_context
+
+    request = LiveContextCaptureRequest(
+        cell_path=str(args.cell_path),
+        runtime_id=args.runtime_id,
+        session_id=args.session_id,
+        task_id=args.task_id,
+        entry_kind=args.kind,
+        content=args.content,
+        source_ref=args.source_ref,
+        retention_hint=args.retention_hint,
+        sensitivity_hint=args.sensitivity_hint,
+        metadata=json.loads(args.metadata) if args.metadata else {},
+        write=bool(args.write),
+    )
+    _print_json(capture_live_context(request))
+
+
+def cmd_live_context_pack(args: argparse.Namespace) -> None:
+    from shyftr.live_context import LiveContextPackRequest, build_live_context_pack
+
+    request = LiveContextPackRequest(
+        cell_path=str(args.cell_path),
+        query=args.query,
+        runtime_id=args.runtime_id,
+        session_id=args.session_id,
+        max_items=args.max_items,
+        max_tokens=args.max_tokens,
+        suppress_entry_ids=[item for item in (args.suppress_entry_id or []) if item],
+        current_prompt_excerpts=args.current_prompt_excerpt or [],
+        metadata=json.loads(args.metadata) if args.metadata else {},
+        write=bool(args.write),
+    )
+    _print_json(build_live_context_pack(request).to_dict())
+
+
+def cmd_live_context_harvest(args: argparse.Namespace) -> None:
+    from shyftr.live_context import SessionHarvestRequest, harvest_session
+
+    request = SessionHarvestRequest(
+        live_cell_path=str(args.live_cell_path),
+        continuity_cell_path=str(args.continuity_cell_path),
+        memory_cell_path=str(args.memory_cell_path),
+        runtime_id=args.runtime_id,
+        session_id=args.session_id,
+        write=bool(args.write),
+        allow_direct_durable_memory=bool(args.allow_direct_durable_memory),
+        metadata=json.loads(args.metadata) if args.metadata else {},
+    )
+    _print_json(harvest_session(request).to_dict())
+
+
+def cmd_live_context_status(args: argparse.Namespace) -> None:
+    from shyftr.live_context import live_context_status
+
+    _print_json(live_context_status(args.cell_path))
+
+
+def cmd_live_context_metrics(args: argparse.Namespace) -> None:
+    from shyftr.live_context import live_context_metrics
+
+    _print_json(live_context_metrics(args.cell_path, runtime_id=args.runtime_id, session_id=args.session_id))
+
+
+def _add_live_context(sub: argparse.ArgumentParser) -> None:
+    live_sub = sub.add_subparsers(dest="live_context_action", required=True)
+
+    capture = live_sub.add_parser("capture", help="Capture working context into a live context cell")
+    capture.add_argument("cell_path", type=_cell_path, help="path to the live context cell")
+    capture.add_argument("content", type=str, help="context content to capture")
+    capture.add_argument("--runtime-id", required=True, type=str, help="runtime identity")
+    capture.add_argument("--session-id", required=True, type=str, help="runtime session identity")
+    capture.add_argument("--task-id", default="default-task", type=str, help="task or run identity")
+    capture.add_argument("--kind", required=True, choices=("active_goal", "active_plan", "active_artifact", "decision", "constraint", "failure", "recovery", "verification", "open_question"), help="live context entry kind")
+    capture.add_argument("--source-ref", default="cli", type=str, help="source reference for provenance")
+    capture.add_argument("--retention-hint", default="session", choices=("ephemeral", "session", "archive", "candidate", "durable", "skill"), help="retention hint")
+    capture.add_argument("--sensitivity-hint", default="internal", choices=("public", "internal", "private", "sensitive"), help="sensitivity hint")
+    capture.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
+    capture.add_argument("--write", action="store_true", default=False, help="append live context ledgers after review")
+
+    pack = live_sub.add_parser("pack", help="Build a bounded advisory live context pack")
+    pack.add_argument("cell_path", type=_cell_path, help="path to the live context cell")
+    pack.add_argument("query", type=str, help="query for relevant live context")
+    pack.add_argument("--runtime-id", required=True, type=str, help="runtime identity")
+    pack.add_argument("--session-id", required=True, type=str, help="runtime session identity")
+    pack.add_argument("--max-items", type=int, default=8, help="maximum live context items")
+    pack.add_argument("--max-tokens", type=int, default=1200, help="maximum estimated tokens")
+    pack.add_argument("--suppress-entry-id", action="append", default=[], help="entry id already present in prompt")
+    pack.add_argument("--current-prompt-excerpt", action="append", default=[], help="current prompt excerpt for duplicate suppression")
+    pack.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
+    pack.add_argument("--write", action="store_true", default=False, help="append live context pack ledger after review")
+
+    harvest = live_sub.add_parser("harvest", help="Classify a session's live context at close")
+    harvest.add_argument("live_cell_path", type=_cell_path, help="path to the live context cell")
+    harvest.add_argument("continuity_cell_path", type=_cell_path, help="path to the continuity cell")
+    harvest.add_argument("memory_cell_path", type=_cell_path, help="path to the durable memory cell")
+    harvest.add_argument("--runtime-id", required=True, type=str, help="runtime identity")
+    harvest.add_argument("--session-id", required=True, type=str, help="runtime session identity")
+    harvest.add_argument("--allow-direct-durable-memory", action="store_true", default=False, help="permit local-policy direct durable writes when eligible; default is proposal-only")
+    harvest.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
+    harvest.add_argument("--write", action="store_true", default=False, help="append harvest ledgers after review")
+
+    status = live_sub.add_parser("status", help="Summarize live context ledgers")
+    status.add_argument("cell_path", type=_cell_path, help="path to the live context cell")
+
+    metrics = live_sub.add_parser("metrics", help="Summarize live context optimization metrics")
+    metrics.add_argument("cell_path", type=_cell_path, help="path to the live context cell")
+    metrics.add_argument("--runtime-id", default=None, type=str, help="optional runtime filter")
+    metrics.add_argument("--session-id", default=None, type=str, help="optional session filter")
+
+# ---------------------------------------------------------------------------
 # Subcommand: sweep
 # ---------------------------------------------------------------------------
 
@@ -1352,11 +1599,32 @@ def _resolve_subcommand(args: argparse.Namespace) -> None:
         "evalgen": cmd_evalgen,
         "evolve": cmd_evolve_scan,
         "serve": cmd_serve,
+        "continuity": cmd_continuity_pack,
+        "live-context": cmd_live_context_status,
     }
 
     cmd_name = args.command
 
-    # Handle nested subcommands (review approve / review reject)
+    if cmd_name in {"carry", "continuity"}:
+        if args.continuity_action == "pack":
+            return cmd_continuity_pack(args)
+        if args.continuity_action == "feedback":
+            return cmd_continuity_feedback(args)
+        if args.continuity_action == "eval":
+            return cmd_continuity_eval(args)
+        if args.continuity_action == "status":
+            return cmd_continuity_status(args)
+        _fail(f"unknown continuity action: {args.continuity_action}")
+
+    if cmd_name == "live-context":
+        return {
+            "capture": cmd_live_context_capture,
+            "pack": cmd_live_context_pack,
+            "harvest": cmd_live_context_harvest,
+            "status": cmd_live_context_status,
+            "metrics": cmd_live_context_metrics,
+        }[args.live_context_action](args)
+
     if cmd_name == "review":
         if args.review_action == "approve":
             return cmd_review_approve(args)
@@ -1510,6 +1778,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_evalgen(sub.add_parser("evalgen", help="Generate synthetic public-safe eval tasks"))
     _add_evolve(sub.add_parser("evolve", help="Scan, simulate, and review memory evolution proposals"))
     _add_serve(sub.add_parser("serve", help="Start the optional local HTTP service"))
+    _add_continuity(sub.add_parser("carry", help="Short alias: opt-in runtime carry packs and feedback"), label="carry")
+    _add_continuity(sub.add_parser("continuity", help="Compatibility alias: opt-in runtime carry packs and feedback"))
+    _add_live_context(sub.add_parser("live-context", help="Capture, pack, and harvest live context"))
 
     return parser
 
