@@ -8,7 +8,7 @@ tags: [shyftr, memory, cells, carry, live-context, mcp, verification]
 metadata:
   hermes:
     tags: [shyftr, memory, cells, carry, live-context, mcp, verification]
-    related_skills: [hermes-agent, hermes-agent-skill-authoring]
+    related_skills: [hermes-agent, hermes-agent-skill-authoring, skill-smith]
 ---
 
 # ShyftR
