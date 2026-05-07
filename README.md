@@ -15,6 +15,8 @@ ShyftR is a stable local-first product line for developer-operated agent memory.
 
 The public surface is intentionally compact: product docs, concepts, API/console references, examples, tests, and release gates are tracked; local planning, status ledgers, runbooks, research notes, and operator notes are kept out of the public clone.
 
+The current implementation also supports a first-class memory-class layer with compatibility-safe `memory_type` handling for working, continuity, episodic, semantic, procedural, resource, and rule memory semantics. Older ledgers remain readable without destructive migration.
+
 ## What ShyftR does
 
 ShyftR is a local memory-cell substrate for agents and agent runtimes:

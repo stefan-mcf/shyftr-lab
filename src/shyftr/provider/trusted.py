@@ -14,7 +14,7 @@ from shyftr.provider.memory import RememberResult, SearchResult, _excerpt, _read
 
 PathLike = Union[str, Path]
 
-TRUSTED_MEMORY_KINDS = frozenset({"preference", "constraint", "workflow", "tool_quirk"})
+TRUSTED_MEMORY_KINDS = frozenset({"preference", "constraint", "workflow", "tool_quirk", "escalation_rule"})
 _REQUIRED_METADATA_FIELDS = ("actor", "trust_reason", "pulse_channel", "created_at")
 
 
@@ -26,6 +26,7 @@ class TrustedRememberResult:
     status: str
     trust_tier: str = "trace"
     trusted_direct_promotion: bool = True
+    memory_type: Optional[str] = None
 
 
 class TrustedMemoryProvider:
@@ -121,6 +122,7 @@ def remember_trusted(
             status=result.status,
             trust_tier=result.trust_tier,
             trusted_direct_promotion=True,
+            memory_type=result.memory_type,
         )
 
     pulse_id, spark_id = _append_pending_trusted_evidence(

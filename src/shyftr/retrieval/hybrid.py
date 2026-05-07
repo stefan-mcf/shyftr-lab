@@ -174,6 +174,7 @@ class HybridResult:
     rationale: Optional[str]
     tags: List[str]
     kind: Optional[str]
+    memory_type: Optional[str]
     status: str
     confidence: Optional[float]
     final_score: float
@@ -190,6 +191,7 @@ class HybridResult:
             "rationale": self.rationale,
             "tags": self.tags,
             "kind": self.kind,
+            "memory_type": self.memory_type,
             "status": self.status,
             "confidence": self.confidence,
             "final_score": self.final_score,
@@ -224,6 +226,7 @@ class CandidateItem:
     rationale: Optional[str] = None
     tags: List[str] = field(default_factory=list)
     kind: Optional[str] = None
+    memory_type: Optional[str] = None
     status: str = "approved"
     confidence: Optional[float] = None
     # Score inputs (0.0-1.0 normalised)
@@ -487,6 +490,7 @@ def hybrid_search(
                 rationale=item.rationale,
                 tags=item.tags,
                 kind=item.kind,
+                memory_type=item.memory_type,
                 status=item.status,
                 confidence=item.confidence,
                 final_score=final_score,

@@ -28,6 +28,7 @@ from .ledger import append_jsonl, read_jsonl
 from .ledger_state import latest_by_key
 from .mutations import active_charge_ids
 from .frontier import project_confidence_state
+from .memory_classes import class_spec, resolve_memory_type
 from .policy import check_source_boundary  # noqa: F401 (re-exported for downstream)
 from .privacy import AccessPolicy, is_charge_export_allowed
 from .retrieval.hybrid import (
@@ -150,6 +151,7 @@ class LoadoutTaskInput:
     max_tokens: int = 4000
     include_fragments: bool = False
     requested_trust_tiers: Optional[List[str]] = None
+    memory_types: Optional[List[str]] = None
     query_kind: Optional[str] = None
     query_tags: Optional[List[str]] = None
     caution_max_items: int = 3
@@ -170,6 +172,7 @@ class LoadoutTaskInput:
             "max_tokens": self.max_tokens,
             "include_fragments": self.include_fragments,
             "requested_trust_tiers": self.requested_trust_tiers,
+            "memory_types": self.memory_types,
             "query_kind": self.query_kind,
             "query_tags": self.query_tags,
             "caution_max_items": self.caution_max_items,
@@ -204,11 +207,20 @@ _BACKGROUND_KINDS = {"alloy", "doctrine", "observation", "fragment", "context"}
 _CONFLICT_KINDS = {"conflict", "contradiction", "disagreement"}
 
 
-def _compute_loadout_role(kind: Optional[str], selection_reason: Optional[str] = None, trust_tier: Optional[str] = None) -> str:
+def _compute_loadout_role(kind: Optional[str], selection_reason: Optional[str] = None, trust_tier: Optional[str] = None, memory_type: Optional[str] = None) -> str:
     """Map retrieval semantics onto Pack/Loadout roles."""
     reason = str(selection_reason or "").strip().lower()
     normalized_kind = str(kind or "").strip().lower().replace("_", "-")
 
+    resolved_memory_type = resolve_memory_type(memory_type, kind=kind, trust_tier=trust_tier)
+    if resolved_memory_type == "rule":
+        return "guidance"
+    if resolved_memory_type == "resource":
+        return "background"
+    if resolved_memory_type == "episodic":
+        return "background"
+    if resolved_memory_type == "continuity":
+        return "background"
     if reason == "conflict" or normalized_kind in _CONFLICT_KINDS:
         return "conflict"
     if reason == "caution" or normalized_kind in _CAUTION_KINDS:
@@ -232,9 +244,10 @@ class LoadoutItem:
     rationale: Optional[str]
     tags: List[str]
     kind: Optional[str]
-    confidence: Optional[float]
-    score: float
-    score_trace: Dict[str, Any]
+    memory_type: Optional[str] = None
+    confidence: Optional[float] = None
+    score: float = 0.0
+    score_trace: Dict[str, Any] = field(default_factory=dict)
     loadout_role: Optional[str] = None
     graph_context: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -246,6 +259,7 @@ class LoadoutItem:
             "rationale": self.rationale,
             "tags": self.tags,
             "kind": self.kind,
+            "memory_type": self.memory_type,
             "confidence": self.confidence,
             "score": self.score,
             "score_trace": self.score_trace,
@@ -460,6 +474,7 @@ def _build_candidate_from_trace(record: Dict[str, Any]) -> CandidateItem:
     kind = record.get("kind")
     negative_space_kind = kind if (kind and str(kind).lower() in NEGATIVE_SPACE_KINDS) else None
     decay_score = score_memory_decay(record).combined
+    memory_type = resolve_memory_type(record.get("memory_type"), kind=kind, trust_tier="trace")
     return CandidateItem(
         item_id=record.get("trace_id", ""),
         cell_id=record.get("cell_id", ""),
@@ -468,6 +483,7 @@ def _build_candidate_from_trace(record: Dict[str, Any]) -> CandidateItem:
         rationale=record.get("rationale"),
         tags=record.get("tags", []),
         kind=kind,
+        memory_type=memory_type,
         status=record.get("status", "approved"),
         confidence=record.get("confidence"),
         success_count=record.get("success_count", 0),
@@ -488,6 +504,7 @@ def _build_candidate_from_alloy(record: Dict[str, Any]) -> CandidateItem:
         rationale=record.get("theme"),
         tags=[],
         kind="alloy",
+        memory_type=resolve_memory_type("procedural"),
         status=record.get("proposal_status", "approved"),
         confidence=record.get("confidence"),
     )
@@ -638,6 +655,9 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
     candidates = _apply_query_sparse_scores(task.query, candidates)
 
     # Score via hybrid search
+    requested_memory_types = {resolve_memory_type(value) for value in (task.memory_types or []) if value is not None}
+    if requested_memory_types:
+        candidates = [candidate for candidate in candidates if resolve_memory_type(candidate.memory_type, kind=candidate.kind, trust_tier=candidate.trust_tier) in requested_memory_types]
     results = hybrid_search(
         candidates,
         query_kind=task.query_kind,
@@ -658,7 +678,7 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
     requested_caution_budget = min(max(task.caution_max_items, 0), max_item_count)
     has_non_caution_result = any(
         not is_operational_state(result.statement)
-        and _compute_loadout_role(result.kind, result.selection_reason, result.trust_tier) != "caution"
+        and _compute_loadout_role(result.kind, result.selection_reason, result.trust_tier, result.memory_type) != "caution"
         for result in results
     )
     caution_budget = requested_caution_budget
@@ -672,7 +692,7 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
             continue
 
         selection_reason = result.selection_reason
-        loadout_role = _compute_loadout_role(result.kind, selection_reason, result.trust_tier)
+        loadout_role = _compute_loadout_role(result.kind, selection_reason, result.trust_tier, result.memory_type)
 
         if loadout_role == "caution" and len(caution_ids) >= caution_budget:
             suppressed_ids.append(result.item_id)
@@ -700,6 +720,7 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
             "loadout_role": loadout_role,
             "retrieval_mode": task.retrieval_mode,
             "retrieval_mode_description": mode_config["description"],
+            "memory_type": resolve_memory_type(result.memory_type, kind=result.kind, trust_tier=result.trust_tier),
         }
         items.append(
             LoadoutItem(
@@ -709,6 +730,7 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
                 rationale=result.rationale,
                 tags=result.tags,
                 kind=result.kind,
+                memory_type=resolve_memory_type(result.memory_type, kind=result.kind, trust_tier=result.trust_tier),
                 confidence=result.confidence,
                 score=result.final_score,
                 score_trace=score_trace,
@@ -735,6 +757,7 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
                 rationale=item.rationale,
                 tags=item.tags,
                 kind=item.kind,
+                memory_type=item.memory_type,
                 confidence=item.confidence,
                 score=item.score,
                 score_trace=item.score_trace,

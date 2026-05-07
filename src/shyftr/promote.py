@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 from uuid import uuid4
 
 from .ledger import append_jsonl, read_jsonl
+from .memory_classes import resolve_memory_type
 from .models import Fragment, Trace
 from .review import latest_review
 
@@ -23,6 +24,7 @@ def promote_fragment(
     promoter: str,
     statement: Optional[str] = None,
     rationale: Optional[str] = None,
+    memory_type: Optional[str] = None,
 ) -> Trace:
     """Promote the latest-approved Fragment into an approved Trace."""
     cell = Path(cell_path)
@@ -51,6 +53,7 @@ def promote_fragment(
         statement=statement or fragment.text,
         source_fragment_ids=[fragment.fragment_id],
         kind=fragment.kind,
+        memory_type=resolve_memory_type(memory_type, kind=fragment.kind, trust_tier="trace"),
         rationale=rationale or review.get("rationale"),
         status="approved",
         confidence=fragment.confidence,

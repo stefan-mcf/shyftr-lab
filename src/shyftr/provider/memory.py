@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 from uuid import uuid4
 
 from shyftr.ledger import append_jsonl
+from shyftr.memory_classes import class_spec, infer_memory_type, resolve_memory_type, validate_resource_memory
 from shyftr.models import Fragment, Source, Trace
 from shyftr.mutations import (
     active_charge_ids,
@@ -33,6 +34,7 @@ class RememberResult:
     candidate_id: str
     status: str
     trust_tier: str = "memory"
+    memory_type: Optional[str] = None
 
     @property
     def charge_id(self) -> str:
@@ -53,8 +55,9 @@ class SearchResult:
     statement: str
     trust_tier: str
     kind: Optional[str]
-    confidence: Optional[float]
-    score: float
+    memory_type: Optional[str] = None
+    confidence: Optional[float] = None
+    score: float = 0.0
     lifecycle_status: str = "approved"
     selection_rationale: str = "lexical_overlap"
     provenance: Dict[str, Any] = field(default_factory=dict)
@@ -129,8 +132,9 @@ class MemoryProvider:
         top_k: int = 10,
         trust_tiers: Optional[Sequence[str]] = None,
         kinds: Optional[Sequence[str]] = None,
+        memory_types: Optional[Sequence[str]] = None,
     ) -> List[SearchResult]:
-        return search(self.cell_path, query, top_k=top_k, trust_tiers=trust_tiers, kinds=kinds)
+        return search(self.cell_path, query, top_k=top_k, trust_tiers=trust_tiers, kinds=kinds, memory_types=memory_types)
 
     def profile(self, max_tokens: int = 2000) -> ProfileProjection:
         return profile(self.cell_path, max_tokens=max_tokens)
@@ -186,6 +190,7 @@ def remember(
     kind: str,
     pulse_context: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    memory_type: Optional[str] = None,
 ) -> RememberResult:
     """Store explicit memory through ShyftR's Regulator and ledger chain."""
     cell = Path(cell_path)
@@ -199,6 +204,11 @@ def remember(
     event_metadata["provider_api"] = "remember"
     if requested_provider_api and requested_provider_api != "remember":
         event_metadata["operation_origin"] = requested_provider_api
+    resolved_memory_type = resolve_memory_type(memory_type or event_metadata.get("memory_type"), kind=kind, trust_tier="trace")
+    if resolved_memory_type is not None:
+        event_metadata["memory_type"] = resolved_memory_type
+    if resolved_memory_type == "resource":
+        validate_resource_memory(clean_statement, event_metadata)
     policy = check_provider_memory_policy(clean_statement, kind, metadata=event_metadata, raise_on_reject=True)
 
     cell_id = _read_cell_id(cell)
@@ -252,6 +262,7 @@ def remember(
         promoter="memory-provider",
         statement=clean_statement,
         rationale="Explicit memory provider write approved by Regulator policy.",
+        memory_type=resolved_memory_type,
     )
 
     return RememberResult(
@@ -259,6 +270,7 @@ def remember(
         evidence_id=source.source_id,
         candidate_id=fragment.fragment_id,
         status=trace.status,
+        memory_type=trace.memory_type,
     )
 
 
@@ -268,11 +280,13 @@ def search(
     top_k: int = 10,
     trust_tiers: Optional[Sequence[str]] = None,
     kinds: Optional[Sequence[str]] = None,
+    memory_types: Optional[Sequence[str]] = None,
 ) -> List[SearchResult]:
     """Search reviewed memory using a lightweight ShyftR-native provider surface."""
     cell = Path(cell_path)
     requested_tiers = set(trust_tiers or ["trace"])
     requested_kinds = set(kinds or [])
+    requested_memory_types = {resolve_memory_type(item) for item in (memory_types or []) if item is not None}
     active_ids = active_charge_ids(cell, projection="retrieval")
     query_terms = _terms(query)
     results: List[SearchResult] = []
@@ -285,6 +299,9 @@ def search(
             continue
         if requested_kinds and trace.kind not in requested_kinds:
             continue
+        resolved_memory_type = resolve_memory_type(getattr(trace, "memory_type", None), kind=trace.kind, trust_tier="trace")
+        if requested_memory_types and resolved_memory_type not in requested_memory_types:
+            continue
         score = _score(query_terms, trace)
         if query_terms and score <= 0:
             continue
@@ -294,9 +311,10 @@ def search(
                 statement=trace.statement,
                 trust_tier="memory",
                 kind=trace.kind,
+                memory_type=resolved_memory_type,
                 confidence=trace.confidence,
                 score=score,
-                provenance={"source_fragment_ids": list(trace.source_fragment_ids)},
+                provenance={"source_fragment_ids": list(trace.source_fragment_ids), "memory_type": resolved_memory_type},
             )
         )
 

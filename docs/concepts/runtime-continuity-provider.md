@@ -16,7 +16,7 @@ The continuity provider does not replace a runtime's mechanical compactor. The r
 A typical installation can use separate cells:
 
 - memory cell: ordinary durable memory
-- continuity cell: pack requests, continuity packs, feedback, synthetic evaluation reports, and review-gated promotion proposals
+- continuity cell: pack requests, continuity packs, carry-state checkpoints, feedback, synthetic evaluation reports, and review-gated promotion proposals
 - live context cell: high-churn working context captured during a runtime session, then harvested or closed at session end
 
 The continuity cell can read from the memory cell when configured by the operator. It should not directly mutate durable memory. Promotion notes from continuity feedback are written as proposals for review.
@@ -124,6 +124,8 @@ It also exposes live context optimization tools:
 
 - `shyftr_live_context_capture`
 - `shyftr_live_context_pack`
+- `shyftr_live_context_checkpoint`
+- `shyftr_live_context_resume`
 - `shyftr_session_harvest`
 - `shyftr_live_context_status`
 
@@ -144,6 +146,8 @@ It also exposes live context optimization endpoints:
 
 - `POST /live-context/capture`
 - `POST /live-context/pack`
+- `POST /live-context/checkpoint`
+- `POST /live-context/resume`
 - `POST /live-context/harvest`
 - `GET /live-context/status`
 
@@ -168,6 +172,17 @@ The continuity cell seeds and writes:
 
 - `ledger/continuity_events.jsonl`
 - `ledger/continuity_packs.jsonl`
+- `ledger/continuity_checkpoints.jsonl`
 - `ledger/continuity_feedback.jsonl`
 - `ledger/continuity_promotion_proposals.jsonl`
 - `ledger/continuity_eval_reports.jsonl`
+
+
+## carry-state behavior and phase 2 compatibility note
+
+A continuity/carry pack can now merge two bounded inputs without changing its advisory posture:
+
+- durable-memory retrieval from the memory cell;
+- typed carry-state checkpoint material derived from the live context cell.
+
+Carry-state items remain distinguishable in exported pack diagnostics and provenance so a runtime can inspect what came from current working state versus reviewed durable memory. When no carry-state exists, continuity behavior falls back to the previous durable-memory-only path.

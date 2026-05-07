@@ -8,7 +8,9 @@ This example shows a synthetic runtime-neutral flow for live context optimizatio
 create temporary cells
 -> capture live context entries
 -> request a bounded advisory pack
+-> build a compact carry-state checkpoint
 -> simulate context pressure and continuity feedback
+-> reconstruct advisory resume state
 -> close the session
 -> harvest live context into review-gated outputs
 -> inspect metrics and proposals
@@ -32,7 +34,12 @@ shyftr live-context capture \
   --runtime-id synthetic-runtime \
   --session-id demo-session \
   --task-id demo-task \
-  --kind constraint \
+  --kind goal \
+  --status active \
+  --related-entry-id ops-proof \
+  --confidence 0.9 \
+  --evidence-ref docs/plan.md \
+  --grounding-ref tests/test_cli_phase2_live_context.py \
   --retention-hint candidate \
   --sensitivity-hint public \
   --write
@@ -44,6 +51,29 @@ shyftr live-context pack \
   --session-id demo-session \
   --max-items 3 \
   --max-tokens 80 \
+  --write
+
+shyftr live-context checkpoint \
+  /tmp/shyftr-demo/live \
+  /tmp/shyftr-demo/continuity \
+  --runtime-id synthetic-runtime \
+  --session-id demo-session \
+  --write
+
+shyftr live-context resume \
+  /tmp/shyftr-demo/continuity \
+  --runtime-id synthetic-runtime \
+  --session-id demo-session
+
+shyftr carry pack \
+  /tmp/shyftr-demo/memory \
+  /tmp/shyftr-demo/continuity \
+  "context optimization prompt budget verification" \
+  --live-cell-path /tmp/shyftr-demo/live \
+  --runtime-id synthetic-runtime \
+  --session-id demo-session \
+  --compaction-id demo-compaction \
+  --mode advisory \
   --write
 
 shyftr live-context harvest \
@@ -67,6 +97,7 @@ shyftr live-context metrics /tmp/shyftr-demo/live \
 - pack items are advisory and include provenance.
 - Duplicate or already-present prompt content is suppressed.
 - Session harvest writes review-gated proposals for durable memory candidates, continuity improvements, and skill proposals.
+- Checkpoints and resume reconstructions remain advisory and compact; they do not mutate durable memory.
 - Durable memory is not silently mutated.
 
 ## metrics
@@ -80,7 +111,9 @@ The synthetic demo records:
 - harvest bucket counts;
 - memory proposal count;
 - continuity improvement proposal count;
-- useful, ignored, and harmful feedback rates when synthetic feedback rows exist.
+- carry-state checkpoint count and checkpoint token totals;
+- useful, ignored, and harmful feedback rates when synthetic feedback rows exist;
+- resume validation metrics such as missing-state and wrong-state counts when a resume flow is exercised.
 
 ## real-runtime gate
 

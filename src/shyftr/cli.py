@@ -404,6 +404,7 @@ def cmd_continuity_pack(args: argparse.Namespace) -> None:
             max_tokens=args.max_tokens,
             include_candidates=args.include_candidates,
             retrieval_mode=args.retrieval_mode,
+            live_cell_path=str(args.live_cell_path) if args.live_cell_path else None,
             write=bool(args.write),
             metadata=json.loads(args.metadata) if args.metadata else {},
         )
@@ -466,6 +467,7 @@ def _add_continuity(sub: argparse.ArgumentParser, *, label: str = "continuity") 
     pack.add_argument("continuity_cell_path", type=_cell_path, nargs="?", metavar="carry_cell_path" if label == "carry" else "continuity_cell_path", help=f"path to the {noun} cell")
     pack.add_argument("query", type=str, nargs="?", help=f"{noun} query from the runtime compaction event")
     pack.add_argument("--request-json", type=str, default=None, help="path to a ContinuityPackRequest JSON file")
+    pack.add_argument("--live-cell-path", type=_cell_path, default=None, help="optional live context cell used to merge typed carry-state")
     pack.add_argument("--runtime-id", type=str, default="default", help="runtime identity")
     pack.add_argument("--session-id", type=str, default="default-session", help="runtime session identity")
     pack.add_argument("--compaction-id", type=str, default="default-compaction", help="compaction event identity")
@@ -528,6 +530,14 @@ def cmd_live_context_capture(args: argparse.Namespace) -> None:
         source_ref=args.source_ref,
         retention_hint=args.retention_hint,
         sensitivity_hint=args.sensitivity_hint,
+        status=args.status,
+        scope=args.scope,
+        parent_entry_id=args.parent_entry_id,
+        related_entry_ids=args.related_entry_id or [],
+        confidence=args.confidence,
+        evidence_refs=args.evidence_ref or [],
+        grounding_refs=args.grounding_ref or [],
+        valid_until=args.valid_until,
         metadata=json.loads(args.metadata) if args.metadata else {},
         write=bool(args.write),
     )
@@ -568,6 +578,34 @@ def cmd_live_context_harvest(args: argparse.Namespace) -> None:
     _print_json(harvest_session(request).to_dict())
 
 
+def cmd_live_context_checkpoint(args: argparse.Namespace) -> None:
+    from shyftr.live_context import CarryStateCheckpointRequest, build_carry_state_checkpoint
+
+    request = CarryStateCheckpointRequest(
+        live_cell_path=str(args.live_cell_path),
+        continuity_cell_path=str(args.continuity_cell_path),
+        runtime_id=args.runtime_id,
+        session_id=args.session_id,
+        max_items=args.max_items,
+        max_tokens=args.max_tokens,
+        metadata=json.loads(args.metadata) if args.metadata else {},
+        write=bool(args.write),
+    )
+    _print_json(build_carry_state_checkpoint(request).to_dict())
+
+
+def cmd_live_context_resume(args: argparse.Namespace) -> None:
+    from shyftr.live_context import reconstruct_resume_state
+
+    _print_json(reconstruct_resume_state(
+        args.continuity_cell_path,
+        runtime_id=args.runtime_id,
+        session_id=args.session_id,
+        max_items=args.max_items,
+        max_tokens=args.max_tokens,
+    ).to_dict())
+
+
 def cmd_live_context_status(args: argparse.Namespace) -> None:
     from shyftr.live_context import live_context_status
 
@@ -589,10 +627,18 @@ def _add_live_context(sub: argparse.ArgumentParser) -> None:
     capture.add_argument("--runtime-id", required=True, type=str, help="runtime identity")
     capture.add_argument("--session-id", required=True, type=str, help="runtime session identity")
     capture.add_argument("--task-id", default="default-task", type=str, help="task or run identity")
-    capture.add_argument("--kind", required=True, choices=("active_goal", "active_plan", "active_artifact", "decision", "constraint", "failure", "recovery", "verification", "open_question"), help="live context entry kind")
+    capture.add_argument("--kind", required=True, choices=("goal", "subgoal", "plan_step", "constraint", "decision", "assumption", "artifact_ref", "tool_state", "error", "recovery", "open_question", "verification_result", "active_goal", "active_plan", "active_artifact", "failure", "verification"), help="live context entry kind")
     capture.add_argument("--source-ref", default="cli", type=str, help="source reference for provenance")
     capture.add_argument("--retention-hint", default="session", choices=("ephemeral", "session", "archive", "candidate", "durable", "skill"), help="retention hint")
     capture.add_argument("--sensitivity-hint", default="internal", choices=("public", "internal", "private", "sensitive"), help="sensitivity hint")
+    capture.add_argument("--status", default=None, choices=("active", "pending", "blocked", "open", "resolved", "completed", "failed", "superseded", "archived"), help="optional typed entry status override")
+    capture.add_argument("--scope", default="session", type=str, help="typed entry scope")
+    capture.add_argument("--parent-entry-id", default=None, type=str, help="optional parent entry id")
+    capture.add_argument("--related-entry-id", action="append", default=[], help="related entry id (repeatable)")
+    capture.add_argument("--confidence", default=None, type=float, help="optional confidence between 0 and 1")
+    capture.add_argument("--evidence-ref", action="append", default=[], help="evidence reference (repeatable)")
+    capture.add_argument("--grounding-ref", action="append", default=[], help="grounding reference (repeatable)")
+    capture.add_argument("--valid-until", default=None, type=str, help="optional ISO expiry timestamp")
     capture.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
     capture.add_argument("--write", action="store_true", default=False, help="append live context ledgers after review")
 
@@ -617,6 +663,23 @@ def _add_live_context(sub: argparse.ArgumentParser) -> None:
     harvest.add_argument("--allow-direct-durable-memory", action="store_true", default=False, help="permit local-policy direct durable writes when eligible; default is proposal-only")
     harvest.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
     harvest.add_argument("--write", action="store_true", default=False, help="append harvest ledgers after review")
+
+    checkpoint = live_sub.add_parser("checkpoint", help="Build a compact advisory carry-state checkpoint")
+    checkpoint.add_argument("live_cell_path", type=_cell_path, help="path to the live context cell")
+    checkpoint.add_argument("continuity_cell_path", type=_cell_path, help="path to the continuity cell")
+    checkpoint.add_argument("--runtime-id", required=True, type=str, help="runtime identity")
+    checkpoint.add_argument("--session-id", required=True, type=str, help="runtime session identity")
+    checkpoint.add_argument("--max-items", type=int, default=8, help="maximum checkpoint items")
+    checkpoint.add_argument("--max-tokens", type=int, default=1200, help="maximum estimated tokens")
+    checkpoint.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
+    checkpoint.add_argument("--write", action="store_true", default=False, help="append checkpoint ledgers after review")
+
+    resume = live_sub.add_parser("resume", help="Reconstruct advisory resume state from continuity/carry")
+    resume.add_argument("continuity_cell_path", type=_cell_path, help="path to the continuity cell")
+    resume.add_argument("--runtime-id", required=True, type=str, help="runtime identity")
+    resume.add_argument("--session-id", required=True, type=str, help="runtime session identity")
+    resume.add_argument("--max-items", type=int, default=8, help="maximum resume items")
+    resume.add_argument("--max-tokens", type=int, default=1200, help="maximum estimated tokens")
 
     status = live_sub.add_parser("status", help="Summarize live context ledgers")
     status.add_argument("cell_path", type=_cell_path, help="path to the live context cell")
@@ -1621,6 +1684,8 @@ def _resolve_subcommand(args: argparse.Namespace) -> None:
             "capture": cmd_live_context_capture,
             "pack": cmd_live_context_pack,
             "harvest": cmd_live_context_harvest,
+            "checkpoint": cmd_live_context_checkpoint,
+            "resume": cmd_live_context_resume,
             "status": cmd_live_context_status,
             "metrics": cmd_live_context_metrics,
         }[args.live_context_action](args)

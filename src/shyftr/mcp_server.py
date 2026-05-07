@@ -31,6 +31,8 @@ TOOL_NAMES = (
     "shyftr_continuity_status",
     "shyftr_live_context_capture",
     "shyftr_live_context_pack",
+    "shyftr_live_context_checkpoint",
+    "shyftr_live_context_resume",
     "shyftr_session_harvest",
     "shyftr_live_context_status",
 )
@@ -48,6 +50,7 @@ def shyftr_search_bridge(args: JsonArgs) -> dict[str, Any]:
         top_k=_bounded_int(payload.get("limit", 10), "limit", minimum=1, maximum=50),
         trust_tiers=_optional_str_list(payload.get("trust_tiers")),
         kinds=_optional_str_list(payload.get("kinds")),
+        memory_types=_optional_str_list(payload.get("memory_types")),
     )
     return {
         "tool": "shyftr_search",
@@ -136,7 +139,7 @@ def shyftr_remember_bridge(args: JsonArgs) -> dict[str, Any]:
             "statement_preview": statement[:240],
             "message": "No memory was written. Re-run with write=true to commit after reviewing the statement.",
         }
-    result = remember(cell_path, statement, kind, metadata=metadata)
+    result = remember(cell_path, statement, kind, metadata=metadata, memory_type=_optional_text(payload.get("memory_type")))
     return {
         "tool": "shyftr_remember",
         "status": result.status,
@@ -146,6 +149,7 @@ def shyftr_remember_bridge(args: JsonArgs) -> dict[str, Any]:
         "source_id": result.pulse_id,
         "candidate_id": result.spark_id,
         "trust_tier": result.trust_tier,
+        "memory_type": result.memory_type,
     }
 
 
@@ -213,6 +217,7 @@ def shyftr_continuity_pack_bridge(args: JsonArgs) -> dict[str, Any]:
         max_tokens=_bounded_int(payload.get("max_tokens", 1200), "max_tokens", minimum=1, maximum=12000),
         include_candidates=bool(payload.get("include_candidates", False)),
         retrieval_mode=str(payload.get("retrieval_mode") or "balanced"),
+        live_cell_path=(str(_require_cell_path_named(payload, "live_cell_path")) if payload.get("live_cell_path") else None),
         write=bool(payload.get("write", False)),
         metadata=_optional_mapping(payload.get("metadata")) or {},
     )
@@ -281,6 +286,14 @@ def shyftr_live_context_capture_bridge(args: JsonArgs) -> dict[str, Any]:
         source_ref=str(payload.get("source_ref") or "mcp"),
         retention_hint=str(payload.get("retention_hint") or "session"),
         sensitivity_hint=str(payload.get("sensitivity_hint") or "internal"),
+        status=_optional_text(payload.get("status")),
+        scope=str(payload.get("scope") or "session"),
+        parent_entry_id=_optional_text(payload.get("parent_entry_id")),
+        related_entry_ids=_optional_str_list(payload.get("related_entry_ids")) or [],
+        confidence=(float(payload["confidence"]) if payload.get("confidence") is not None else None),
+        evidence_refs=_optional_str_list(payload.get("evidence_refs")) or [],
+        grounding_refs=_optional_str_list(payload.get("grounding_refs")) or [],
+        valid_until=_optional_text(payload.get("valid_until")),
         metadata=_optional_mapping(payload.get("metadata")) or {},
         write=bool(payload.get("write", False)),
     )
@@ -304,6 +317,40 @@ def shyftr_live_context_pack_bridge(args: JsonArgs) -> dict[str, Any]:
         write=bool(payload.get("write", False)),
     )
     return {"tool": "shyftr_live_context_pack", "status": "ok", "write": bool(payload.get("write", False)), **build_live_context_pack(request).to_dict()}
+
+
+def shyftr_live_context_checkpoint_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _load_payload(args)
+    from shyftr.live_context import CarryStateCheckpointRequest, build_carry_state_checkpoint
+
+    request = CarryStateCheckpointRequest(
+        live_cell_path=str(_require_cell_path_named(payload, "live_cell_path")),
+        continuity_cell_path=str(_require_cell_path_named(payload, "continuity_cell_path")),
+        runtime_id=str(payload.get("runtime_id") or "mcp"),
+        session_id=_require_text(payload.get("session_id"), "session_id"),
+        max_items=_bounded_int(payload.get("max_items", 8), "max_items", minimum=0, maximum=100),
+        max_tokens=_bounded_int(payload.get("max_tokens", 1200), "max_tokens", minimum=1, maximum=12000),
+        write=bool(payload.get("write", False)),
+        metadata=_optional_mapping(payload.get("metadata")) or {},
+    )
+    return {"tool": "shyftr_live_context_checkpoint", "status": "ok", "write": bool(payload.get("write", False)), **build_carry_state_checkpoint(request).to_dict()}
+
+
+def shyftr_live_context_resume_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _load_payload(args)
+    from shyftr.live_context import reconstruct_resume_state
+
+    return {
+        "tool": "shyftr_live_context_resume",
+        "status": "ok",
+        **reconstruct_resume_state(
+            _require_cell_path_named(payload, "continuity_cell_path"),
+            runtime_id=str(payload.get("runtime_id") or "mcp"),
+            session_id=_require_text(payload.get("session_id"), "session_id"),
+            max_items=_bounded_int(payload.get("max_items", 8), "max_items", minimum=0, maximum=100),
+            max_tokens=_bounded_int(payload.get("max_tokens", 1200), "max_tokens", minimum=1, maximum=12000),
+        ).to_dict(),
+    }
 
 
 def shyftr_session_harvest_bridge(args: JsonArgs) -> dict[str, Any]:
@@ -345,9 +392,10 @@ def create_mcp_server() -> Any:
         limit: int = 10,
         trust_tiers: list[str] | None = None,
         kinds: list[str] | None = None,
+        memory_types: list[str] | None = None,
     ) -> dict[str, Any]:
         return shyftr_search_bridge(
-            {"cell_path": cell_path, "query": query, "limit": limit, "trust_tiers": trust_tiers, "kinds": kinds}
+            {"cell_path": cell_path, "query": query, "limit": limit, "trust_tiers": trust_tiers, "kinds": kinds, "memory_types": memory_types}
         )
 
     @server.tool(name="shyftr_pack")
@@ -382,10 +430,11 @@ def create_mcp_server() -> Any:
         statement: str,
         kind: str,
         actor: str | None = None,
+        memory_type: str | None = None,
         write: bool = False,
     ) -> dict[str, Any]:
         return shyftr_remember_bridge(
-            {"cell_path": cell_path, "statement": statement, "kind": kind, "actor": actor, "write": write}
+            {"cell_path": cell_path, "statement": statement, "kind": kind, "actor": actor, "memory_type": memory_type, "write": write}
         )
 
     @server.tool(name="shyftr_record_feedback")
@@ -430,6 +479,7 @@ def create_mcp_server() -> Any:
         mode: str = "shadow",
         max_items: int = 8,
         max_tokens: int = 1200,
+        live_cell_path: str | None = None,
         write: bool = False,
     ) -> dict[str, Any]:
         return shyftr_continuity_pack_bridge(
@@ -444,6 +494,7 @@ def create_mcp_server() -> Any:
                 "mode": mode,
                 "max_items": max_items,
                 "max_tokens": max_tokens,
+                "live_cell_path": live_cell_path,
                 "write": write,
             }
         )
@@ -565,6 +616,14 @@ def create_mcp_server() -> Any:
         source_ref: str = "mcp",
         retention_hint: str = "session",
         sensitivity_hint: str = "internal",
+        status: str | None = None,
+        scope: str = "session",
+        parent_entry_id: str | None = None,
+        related_entry_ids: list[str] | None = None,
+        confidence: float | None = None,
+        evidence_refs: list[str] | None = None,
+        grounding_refs: list[str] | None = None,
+        valid_until: str | None = None,
         write: bool = False,
     ) -> dict[str, Any]:
         return shyftr_live_context_capture_bridge({
@@ -577,6 +636,14 @@ def create_mcp_server() -> Any:
             "source_ref": source_ref,
             "retention_hint": retention_hint,
             "sensitivity_hint": sensitivity_hint,
+            "status": status,
+            "scope": scope,
+            "parent_entry_id": parent_entry_id,
+            "related_entry_ids": related_entry_ids,
+            "confidence": confidence,
+            "evidence_refs": evidence_refs,
+            "grounding_refs": grounding_refs,
+            "valid_until": valid_until,
             "write": write,
         })
 
@@ -598,6 +665,42 @@ def create_mcp_server() -> Any:
             "max_items": max_items,
             "max_tokens": max_tokens,
             "write": write,
+        })
+
+    @server.tool(name="shyftr_live_context_checkpoint")
+    def shyftr_live_context_checkpoint_tool(
+        live_cell_path: str,
+        continuity_cell_path: str,
+        session_id: str,
+        runtime_id: str = "mcp",
+        max_items: int = 8,
+        max_tokens: int = 1200,
+        write: bool = False,
+    ) -> dict[str, Any]:
+        return shyftr_live_context_checkpoint_bridge({
+            "live_cell_path": live_cell_path,
+            "continuity_cell_path": continuity_cell_path,
+            "session_id": session_id,
+            "runtime_id": runtime_id,
+            "max_items": max_items,
+            "max_tokens": max_tokens,
+            "write": write,
+        })
+
+    @server.tool(name="shyftr_live_context_resume")
+    def shyftr_live_context_resume_tool(
+        continuity_cell_path: str,
+        session_id: str,
+        runtime_id: str = "mcp",
+        max_items: int = 8,
+        max_tokens: int = 1200,
+    ) -> dict[str, Any]:
+        return shyftr_live_context_resume_bridge({
+            "continuity_cell_path": continuity_cell_path,
+            "session_id": session_id,
+            "runtime_id": runtime_id,
+            "max_items": max_items,
+            "max_tokens": max_tokens,
         })
 
     @server.tool(name="shyftr_session_harvest")
@@ -713,6 +816,7 @@ def _search_result_to_public(item: Any) -> dict[str, Any]:
         "statement": item.statement,
         "trust_tier": item.trust_tier,
         "kind": item.kind,
+        "memory_type": getattr(item, "memory_type", None),
         "confidence": item.confidence,
         "score": item.score,
         "lifecycle_status": item.lifecycle_status,
@@ -729,6 +833,7 @@ def _memory_item_to_public(item: Mapping[str, Any]) -> dict[str, Any]:
         "rationale": item.get("rationale"),
         "tags": item.get("tags", []),
         "kind": item.get("kind"),
+        "memory_type": item.get("memory_type"),
         "confidence": item.get("confidence"),
         "score": item.get("score"),
         "pack_role": item.get("loadout_role"),
@@ -799,6 +904,8 @@ def _handle_json_rpc_message(message: dict[str, Any]) -> dict[str, Any] | None:
                 "shyftr_continuity_status": shyftr_continuity_status_bridge,
                 "shyftr_live_context_capture": shyftr_live_context_capture_bridge,
                 "shyftr_live_context_pack": shyftr_live_context_pack_bridge,
+                "shyftr_live_context_checkpoint": shyftr_live_context_checkpoint_bridge,
+                "shyftr_live_context_resume": shyftr_live_context_resume_bridge,
                 "shyftr_session_harvest": shyftr_session_harvest_bridge,
                 "shyftr_live_context_status": shyftr_live_context_status_bridge,
             }
@@ -833,6 +940,8 @@ def _tool_descriptors() -> list[dict[str, Any]]:
         _tool_descriptor("shyftr_continuity_status", "Compatibility alias: summarize carry ledgers for a cell.", ["continuity_cell_path"]),
         _tool_descriptor("shyftr_live_context_capture", "Capture live working context; dry-run unless write=true.", ["cell_path", "content", "session_id", "entry_kind"]),
         _tool_descriptor("shyftr_live_context_pack", "Build a bounded advisory live context pack.", ["cell_path", "query", "session_id"]),
+        _tool_descriptor("shyftr_live_context_checkpoint", "Build a compact advisory carry-state checkpoint; dry-run unless write=true.", ["live_cell_path", "continuity_cell_path", "session_id"]),
+        _tool_descriptor("shyftr_live_context_resume", "Reconstruct deterministic advisory resume state from continuity/carry records.", ["continuity_cell_path", "session_id"]),
         _tool_descriptor("shyftr_session_harvest", "Classify session live context into review-gated harvest outputs.", ["live_cell_path", "continuity_cell_path", "memory_cell_path", "session_id"]),
         _tool_descriptor("shyftr_live_context_status", "Summarize live context ledgers for a cell.", ["cell_path"]),
     ]

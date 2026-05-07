@@ -231,6 +231,31 @@ def _register_routes(app: FastAPI) -> None:
         except Exception as exc:
             return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
 
+    @app.post("/live-context/checkpoint")
+    async def live_context_checkpoint(request: Request) -> JSONResponse:
+        body = await _parse_body(request)
+        try:
+            from shyftr.live_context import CarryStateCheckpointRequest, build_carry_state_checkpoint
+            payload = {k: v for k, v in body.items() if k in CarryStateCheckpointRequest.__dataclass_fields__}
+            return JSONResponse(content=build_carry_state_checkpoint(CarryStateCheckpointRequest(**payload)).to_dict())
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
+    @app.post("/live-context/resume")
+    async def live_context_resume(request: Request) -> JSONResponse:
+        body = await _parse_body(request)
+        try:
+            from shyftr.live_context import reconstruct_resume_state
+            return JSONResponse(content=reconstruct_resume_state(
+                body["continuity_cell_path"],
+                runtime_id=str(body.get("runtime_id") or "mcp"),
+                session_id=str(body["session_id"]),
+                max_items=int(body.get("max_items", 8)),
+                max_tokens=int(body.get("max_tokens", 1200)),
+            ).to_dict())
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
     @app.get("/live-context/status")
     async def live_context_status_route(cell_path: str) -> JSONResponse:
         try:
@@ -376,12 +401,12 @@ def _register_routes(app: FastAPI) -> None:
         """Request a Loadout / Pack.
 
         Expects JSON body conforming to RuntimeLoadoutRequest schema.
-        Delegates to shyftr.integrations.pack_api.process_runtime_loadout_request.
+        Delegates to shyftr.integrations.loadout_api.process_runtime_loadout_request.
         """
         body = await _parse_body(request)
 
         try:
-            from shyftr.integrations.pack_api import (
+            from shyftr.integrations.loadout_api import (
                 RuntimeLoadoutRequest,
                 process_runtime_loadout_request,
             )

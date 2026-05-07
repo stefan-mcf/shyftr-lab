@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 import uuid
 
 from .ledger import append_jsonl, read_jsonl
+from .memory_classes import resolve_memory_type
+from .live_context import latest_carry_state_checkpoint
 from .pack import LoadoutTaskInput, assemble_loadout, estimate_tokens, is_operational_state
 
 PathLike = Union[str, Path]
@@ -42,6 +44,7 @@ class ContinuityPackRequest:
     max_tokens: int = DEFAULT_MAX_TOKENS
     include_candidates: bool = False
     retrieval_mode: str = "balanced"
+    live_cell_path: Optional[str] = None
     write: bool = False
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -77,6 +80,7 @@ class ContinuityPackRequest:
             "max_tokens": self.max_tokens,
             "include_candidates": self.include_candidates,
             "retrieval_mode": self.retrieval_mode,
+            "live_cell_path": self.live_cell_path,
             "write": self.write,
             "metadata": dict(self.metadata),
         }
@@ -96,6 +100,7 @@ class ContinuityItem:
     statement: str
     trust_tier: str
     kind: Optional[str]
+    memory_type: Optional[str]
     confidence: Optional[float]
     score: float
     continuity_role: str
@@ -110,6 +115,7 @@ class ContinuityItem:
             "statement": self.statement,
             "trust_tier": self.trust_tier,
             "kind": self.kind,
+            "memory_type": self.memory_type,
             "confidence": self.confidence,
             "score": self.score,
             "continuity_role": self.continuity_role,
@@ -140,6 +146,7 @@ class ContinuityPack:
     safety: Dict[str, Any]
     retrieval: Dict[str, Any]
     diagnostics: Dict[str, Any]
+    carry_state: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -161,6 +168,7 @@ class ContinuityPack:
             "safety": dict(self.safety),
             "retrieval": dict(self.retrieval),
             "diagnostics": dict(self.diagnostics),
+            "carry_state": dict(self.carry_state or {}),
         }
 
 
@@ -299,11 +307,35 @@ def assemble_continuity_pack(request: ContinuityPackRequest) -> ContinuityPack:
             dry_run=not request.write,
         )
     )
-    raw_items = [_continuity_item_from_loadout(item.to_dict()) for item in loadout.items]
-    raw_items = [item for item in raw_items if not is_operational_state(item.statement)]
+    memory_items = [_continuity_item_from_loadout(item.to_dict()) for item in loadout.items]
+    memory_items = [item for item in memory_items if not is_operational_state(item.statement)]
+    carry_checkpoint = None
+    carry_items: List[ContinuityItem] = []
+    if request.live_cell_path:
+        carry_checkpoint = latest_carry_state_checkpoint(
+            request.continuity_cell_path,
+            runtime_id=request.runtime_id,
+            session_id=request.session_id,
+        )
+        if carry_checkpoint is None:
+            from .live_context import build_carry_state_checkpoint, CarryStateCheckpointRequest
+            carry_checkpoint = build_carry_state_checkpoint(
+                CarryStateCheckpointRequest(
+                    live_cell_path=request.live_cell_path,
+                    continuity_cell_path=request.continuity_cell_path,
+                    runtime_id=request.runtime_id,
+                    session_id=request.session_id,
+                    max_items=request.max_items,
+                    max_tokens=request.max_tokens,
+                    write=request.write,
+                    metadata={"trigger": request.trigger, **dict(request.metadata)},
+                )
+            )
+        carry_items = [_continuity_item_from_carry(item) for item in carry_checkpoint.continuity_items()]
+    raw_items = _merge_continuity_sources(carry_items, memory_items)
 
     if request.mode == "shadow":
-        exported_items: List[ContinuityItem] = []
+        exported_items = []
         total_tokens = 0
         exported = False
     else:
@@ -338,7 +370,10 @@ def assemble_continuity_pack(request: ContinuityPackRequest) -> ContinuityPack:
             "shadow_candidate_count": len(raw_items),
             "suppressed_for_bounds": max(0, len(raw_items) - len(exported_items)),
             "mode": request.mode,
+            "memory_candidate_count": len(memory_items),
+            "carry_candidate_count": len(carry_items),
         },
+        carry_state=carry_checkpoint.to_dict() if carry_checkpoint is not None else None,
     )
     if request.write:
         _write_pack_ledgers(continuity_cell, request, pack, raw_candidate_count=len(raw_items))
@@ -468,6 +503,7 @@ def continuity_status(continuity_cell_path: PathLike) -> Dict[str, Any]:
     ledgers = {
         "packs": cell / "ledger" / "continuity_packs.jsonl",
         "feedback": cell / "ledger" / "continuity_feedback.jsonl",
+        "checkpoints": cell / "ledger" / "continuity_checkpoints.jsonl",
         "promotion_proposals": cell / "ledger" / "continuity_promotion_proposals.jsonl",
         "eval_reports": cell / "ledger" / "continuity_eval_reports.jsonl",
     }
@@ -497,6 +533,7 @@ def _continuity_item_from_loadout(item: Dict[str, Any]) -> ContinuityItem:
         statement=statement,
         trust_tier=str(item.get("trust_tier") or "trace"),
         kind=item.get("kind"),
+        memory_type=resolve_memory_type(item.get("memory_type"), kind=item.get("kind"), trust_tier=item.get("trust_tier")),
         confidence=item.get("confidence"),
         score=float(item.get("score") or 0.0),
         continuity_role=continuity_role,
@@ -505,6 +542,41 @@ def _continuity_item_from_loadout(item: Dict[str, Any]) -> ContinuityItem:
         provenance={"score_trace": item.get("score_trace") or {}, "graph_context": item.get("graph_context") or []},
         token_estimate=estimate_tokens(statement),
     )
+
+
+
+def _continuity_item_from_carry(item: Dict[str, Any]) -> ContinuityItem:
+    provenance = dict(item.get("provenance") or {})
+    entry_id = provenance.get("entry_id") or item.get("entry_id") or "carry-item"
+    statement = str(item.get("statement") or "")
+    tags = [f"section:{item.get('section')}" if item.get("section") else "section:unknown", "source:carry_state"]
+    return ContinuityItem(
+        memory_id=str(entry_id),
+        statement=statement,
+        trust_tier="session",
+        kind=item.get("entry_kind"),
+        memory_type=resolve_memory_type(item.get("memory_type"), entry_kind=item.get("entry_kind"), retention_hint=item.get("retention_hint")),
+        confidence=item.get("confidence"),
+        score=float(item.get("score") or 0.0) + 5.0,
+        continuity_role=str(item.get("continuity_role") or "background"),
+        rationale=f"carry_state:{item.get('section')}",
+        tags=tags,
+        provenance={"carry_state": True, **provenance},
+        token_estimate=int(item.get("token_estimate") or estimate_tokens(statement)),
+    )
+
+
+def _merge_continuity_sources(carry_items: Sequence[ContinuityItem], memory_items: Sequence[ContinuityItem]) -> List[ContinuityItem]:
+    merged: List[ContinuityItem] = []
+    seen: set[str] = set()
+    for item in list(carry_items) + list(memory_items):
+        key = " ".join(item.statement.lower().split())
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(item)
+    merged.sort(key=lambda current: (0 if current.provenance.get("carry_state") else 1, -current.score, current.memory_id))
+    return merged
 
 
 def _enforce_bounds(items: Sequence[ContinuityItem], *, max_items: int, max_tokens: int) -> List[ContinuityItem]:

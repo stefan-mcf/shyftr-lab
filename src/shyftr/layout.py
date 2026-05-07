@@ -72,6 +72,7 @@ SEEDED_JSONL_FILES = (
     "ledger/packs.jsonl",
     "ledger/continuity_events.jsonl",
     "ledger/continuity_packs.jsonl",
+    "ledger/continuity_checkpoints.jsonl",
     "ledger/continuity_feedback.jsonl",
     "ledger/continuity_promotion_proposals.jsonl",
     "ledger/continuity_eval_reports.jsonl",

@@ -4,6 +4,8 @@ from dataclasses import MISSING, dataclass, field, fields
 import json
 from typing import Any, ClassVar, Dict, List, Optional, Sequence, Type, TypeVar
 
+from .memory_classes import MEMORY_TYPES, resolve_memory_type
+
 
 T = TypeVar("T", bound="SerializableModel")
 
@@ -224,6 +226,7 @@ class Memory(SerializableModel):
     statement: str
     candidate_ids: List[str]
     kind: Optional[str] = None
+    memory_type: Optional[str] = None
     rationale: Optional[str] = None
     status: str = "proposed"
     confidence: Optional[float] = None
@@ -231,6 +234,10 @@ class Memory(SerializableModel):
     use_count: int = 0
     success_count: int = 0
     failure_count: int = 0
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        object.__setattr__(self, "memory_type", resolve_memory_type(self.memory_type, kind=self.kind, trust_tier="trace"))
 
     _required_fields: ClassVar[Sequence[str]] = (
         "memory_id",
@@ -406,6 +413,7 @@ class Trace(SerializableModel):
     statement: str
     source_fragment_ids: List[str]
     kind: Optional[str] = None
+    memory_type: Optional[str] = None
     rationale: Optional[str] = None
     status: str = "proposed"
     confidence: Optional[float] = None
@@ -413,6 +421,10 @@ class Trace(SerializableModel):
     use_count: int = 0
     success_count: int = 0
     failure_count: int = 0
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        object.__setattr__(self, "memory_type", resolve_memory_type(self.memory_type, kind=self.kind, trust_tier="trace"))
 
     _required_fields: ClassVar[Sequence[str]] = (
         "trace_id",

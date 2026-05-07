@@ -219,6 +219,8 @@ safety regulator that keeps ShyftR proposing and the runtime applying.
 
 A context-optimization runtime can also use a live context cell as a working buffer. Live context capture is not durable memory by default. At session close, a harvest process classifies live entries into discard, archive, continuity feedback, memory candidate, direct durable memory, or skill proposal buckets. Only reviewed or policy-approved durable material should enter the memory cell.
 
+Phase 3 adds a compatibility-safe `memory_type` layer so memory class authority is explicit: `working`, `continuity`, `episodic`, `semantic`, `procedural`, `resource`, and `rule`. `kind` remains the finer subtype label inside those classes.
+
 This keeps the active prompt lean while preserving inspectable ledgers. Cells may grow, but packs supplied to a runtime remain bounded by explicit item and token budgets.
 
 This contract is runtime-agnostic. It contains no assumptions about any

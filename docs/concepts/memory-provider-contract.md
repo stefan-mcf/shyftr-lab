@@ -4,6 +4,8 @@ This contract defines how ShyftR presents a local-first memory-provider surface 
 
 ## Contract principles
 
+Phase 3 memory-class note: provider-facing durable records may now carry a first-class `memory_type` alongside `kind`. `memory_type` expresses broad class authority/retention/retrieval semantics, while `kind` remains the finer subtype label. Legacy records without `memory_type` remain valid and are interpreted through compatibility mapping.
+
 - cell ledgers are canonical truth for every memory write, mutation, review event, and feedback.
 - The regulator controls admission, promotion, retrieval, mutation, and export.
 - Search uses the grid as rebuildable acceleration over ledger-backed memories, patterns, rules, and evidence.
@@ -43,7 +45,7 @@ Expected inputs:
 
 - target cell or cell scope set
 - query text or structured query
-- optional trust tiers, kinds, status filters, sensitivity filters, and result limit
+- optional trust tiers, kinds, memory-type filters, status filters, sensitivity filters, and result limit
 - optional task or runtime context for scoring
 
 ShyftR behavior:
@@ -53,7 +55,7 @@ ShyftR behavior:
 3. Return labeled results with memory, pattern, rule, candidate, or evidence provenance.
 4. Record retrieval logs when the search contributes to a pack or task.
 
-Results must identify trust tier, confidence, lifecycle status, source IDs, and selection rationale.
+Results must identify trust tier, `memory_type`, confidence, lifecycle status, source IDs, and selection rationale.
 
 ### `profile`
 
@@ -233,14 +235,14 @@ Snapshots are portable artifacts. The originating cell ledger remains authoritat
 Current implementation status after UMS-2:
 
 - `shyftr.provider.memoryProvider` provides a cell-bound facade for the implemented memory-provider surface.
-- `remember(cell_path, statement, kind, evidence_context=None, metadata=None)` writes explicit memory through the regulator and records a evidence, candidate review, promotion event, and memory with provenance.
+- `remember(cell_path, statement, kind, evidence_context=None, metadata=None, memory_type=None)` writes explicit memory through the regulator and records an evidence row, candidate review, promotion event, and memory with provenance. `memory_type` is optional and compatibility-safe.
 - `remember_trusted(cell_path, statement, kind, actor, trust_reason, evidence_channel, created_at, trusted_direct_promotion=True, metadata=None)` is the hardened trusted explicit-memory path. It requires actor, trust reason, evidence channel, and creation time before any ledger write.
 - `TrustedmemoryProvider(cell_path, actor, evidence_channel)` wraps the same trusted path for cell-bound runtime use.
 - Trusted kinds are intentionally narrow: `preference`, `constraint`, `workflow`, and `tool_quirk`. Unsupported kinds fail before ledger writes.
 - Trusted writes still pass regulator pollution checks. Operational state, branch/worktree details, artifact paths, queue status, and unverified completion claims are rejected before admission.
 - When trusted direct promotion is enabled, the trusted path still records evidence, a candidate, review metadata, a promotion event, and an approved memory. It does not write memories directly.
 - When trusted direct promotion is disabled, ShyftR captures the evidence record and pending candidate evidence without creating a review, promotion event, or approved memory automatically.
-- `search(cell_path, query, top_k=10, trust_tiers=None, kinds=None)` reads approved memory rows, collapses append-only ledger updates to the latest row per memory ID, excludes user-facing forgotten or replaced memories, and returns trust tier, memory ID, confidence, lifecycle status, selection rationale, and provenance.
+- `search(cell_path, query, top_k=10, trust_tiers=None, kinds=None, memory_types=None)` reads approved memory rows, collapses append-only ledger updates to the latest row per memory ID, excludes user-facing forgotten or replaced memories, and returns trust tier, memory type, memory ID, confidence, lifecycle status, selection rationale, and provenance.
 - `profile(cell_path, max_tokens=2000)` returns a compact markdown profile projection with provenance memory IDs. It is a rebuildable projection, not canonical truth.
 - `forget(cell_path, memory_id, reason, actor)`, `replace(cell_path, memory_id, new_statement, reason, actor)`, and `deprecate(cell_path, memory_id, reason, actor)` append provider lifecycle events. `forget` and `replace` exclude affected memories from normal provider search/profile reads; broader lifecycle ledgers remain planned for UMS-4.
 

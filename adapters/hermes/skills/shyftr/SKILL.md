@@ -129,6 +129,34 @@ ShyftR proposes. The runtime applies.
 
 User-facing prose should prefer `ShyftR`, `memory`, `memory_id`, `pack`, and `feedback`. Legacy aliases belong only in compatibility docs, compatibility fields, or quoted existing artifacts.
 
+## Memory class layer
+
+Phase 3 adds a compatibility-safe first-class memory layer.
+
+- `memory_type` = broad class semantics
+- `kind` = finer subtype label
+
+Canonical classes:
+- `working`
+- `continuity`
+- `episodic`
+- `semantic`
+- `procedural`
+- `resource`
+- `rule`
+
+Practical defaults:
+- `preference` and `constraint` are typically `semantic`
+- `workflow`, `recovery_pattern`, `verification_heuristic`, `routing_heuristic`, and `tool_quirk` are typically `procedural`
+- file/url/code/log handles are `resource`
+- explicit guardrails and supersession policy are `rule`
+
+Guardrails:
+- legacy records may omit `memory_type`
+- live context is not durable memory by default
+- resource memory should store references/handles, not blob dumps
+- rule memory has higher behavioral precedence but remains review-gated
+
 ## Cell Roles
 
 Use the right cell for the job:

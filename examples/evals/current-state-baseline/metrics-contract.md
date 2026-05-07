@@ -2,6 +2,8 @@
 
 Schema version: `current-state-baseline.v1`
 
+Phase 2 note: the baseline schema version stays stable, but Mode B and Mode C now permit typed carry-state/checkpoint and resume-validation extras alongside the required shared fields.
+
 ## Modes
 
 - `durable`: current durable-memory-only path through loadout assembly.
@@ -126,8 +128,21 @@ Each fixture must separate:
 - Exact equality is expected for stable structural metrics.
 - Comparator tolerances may be configured per metric later, but schema drift must always fail loudly.
 
+## Phase 2 extras
+
+Typical optional extras now include:
+- `carry_state_present`
+- `carry_candidate_count`
+- `memory_candidate_count`
+- `carry_state_checkpoint_count`
+- `carry_state_checkpoint_tokens`
+- `checkpoint_total_items`
+- `checkpoint_total_tokens`
+- `resume_validation`
+
+These enrich regression analysis but do not replace the required shared fields above.
+
 ## Explicit exclusions
 
-- no typed working memory;
 - no retrieval redesign;
 - no broad benchmark or external-runtime superiority claims.

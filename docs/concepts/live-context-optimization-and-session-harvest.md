@@ -27,7 +27,7 @@ runtime session
 
 ### live context cell
 
-The live context cell is a working buffer. It captures context that may help the current task continue without keeping every detail in the active prompt.
+The live context cell is a working buffer. It captures context that may help the current task continue without keeping every detail in the active prompt. Phase 2 adds a typed working-state layer so entries can carry canonical kinds, status, relationships, confidence, provenance references, and optional expiry without breaking older flat rows.
 
 Examples:
 
@@ -44,7 +44,7 @@ The live context cell should be session-scoped or retention-scoped. It should be
 
 ### continuity cell
 
-The continuity cell records how context management performed.
+The continuity cell records how context management performed. Phase 2 also lets it store compact carry-state checkpoints so a runtime can reconstruct a minimal advisory resume state after compression or handoff.
 
 Examples:
 
@@ -86,6 +86,8 @@ session closes
 -> write continuity improvement proposals
 -> mark live context cell closed
 ```
+
+Carry-state checkpoints are compact, advisory snapshots with deterministic sections for unresolved goals, current plan steps, open loops, commitments, constraints, assumptions, recent errors/recoveries, artifact refs, cautions, and verification results. They are append-only records under the continuity cell and remain separate from durable memory.
 
 Harvest buckets:
 
@@ -151,7 +153,8 @@ The public alpha implements:
 
 - `live_context` cell layout with append-only live context and harvest ledgers;
 - live context capture through CLI, MCP, and local HTTP service surfaces;
-- bounded advisory pack assembly with item/token caps, duplicate suppression, stale-item suppression, roles, and provenance;
+- bounded advisory pack assembly with item/token caps, duplicate suppression, stale-item suppression, typed score breakdowns, roles, and provenance;
+- compact carry-state checkpoint creation and deterministic resume reconstruction;
 - session harvest through CLI, MCP, and local HTTP service surfaces;
 - deterministic harvest classification reports;
 - review-gated memory promotion proposals from harvest;
@@ -159,3 +162,21 @@ The public alpha implements:
 - synthetic runtime fixtures and evaluation metrics.
 
 External capture and pack surfaces remain dry-run unless an explicit write flag is supplied. Real-runtime profile enablement remains outside this alpha and requires operator approval.
+
+
+## phase 2 typed surfaces
+
+Phase 2 keeps alpha compatibility names such as `active_goal`, `active_plan`, `active_artifact`, `failure`, and `verification`, but normalizes them to canonical kinds (`goal`, `plan_step`, `artifact_ref`, `error`, `verification_result`) during read/write.
+
+Typed capture fields now include:
+
+- `status` for active/pending/blocked/open/resolved/completed/failed/superseded/archived state;
+- `parent_entry_id` and `related_entry_ids` for relationship locality;
+- `confidence`, `evidence_refs`, and `grounding_refs` for typed provenance;
+- `valid_until` for bounded working-state expiry.
+
+New public-alpha flows:
+
+- `shyftr live-context checkpoint ...` and `POST /live-context/checkpoint` build a compact advisory carry-state checkpoint;
+- `shyftr live-context resume ...` and `POST /live-context/resume` reconstruct a deterministic advisory resume state from continuity/carry records;
+- continuity packs can merge durable-memory retrieval with typed carry-state when `live_cell_path` is supplied on the continuity/carry pack surface.

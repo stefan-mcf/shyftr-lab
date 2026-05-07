@@ -24,14 +24,17 @@ from shyftr.continuity import (  # noqa: E402
     continuity_status,
 )
 from shyftr.live_context import (  # noqa: E402
+    CarryStateCheckpointRequest,
     LiveContextCaptureRequest,
     LiveContextPackRequest,
     SessionHarvestRequest,
+    build_carry_state_checkpoint,
     build_live_context_pack,
     capture_live_context,
     harvest_session,
     live_context_metrics,
     live_context_status,
+    reconstruct_resume_state,
 )
 from shyftr import loadout as loadout_module  # noqa: E402
 from shyftr import pack as pack_module  # noqa: E402
@@ -376,13 +379,33 @@ def run_durable_fixture(fixture: Mapping[str, Any]) -> Dict[str, Any]:
 def run_carry_fixture(fixture: Mapping[str, Any]) -> Dict[str, Any]:
     seed = _seed_fixture(fixture)
     config = fixture.get("mode_config", {}).get("carry", {})
+    runtime_id = f"baseline-{fixture['fixture_id']}"
+    session_id = f"session-{fixture['fixture_id']}"
+    compaction_id = f"carry-{fixture['fixture_id']}"
+
     pack = assemble_continuity_pack(
         ContinuityPackRequest(
             memory_cell_path=str(seed.memory_cell),
             continuity_cell_path=str(seed.continuity_cell),
-            runtime_id=f"baseline-{fixture['fixture_id']}",
-            session_id=f"session-{fixture['fixture_id']}",
-            compaction_id=f"carry-{fixture['fixture_id']}",
+            runtime_id=runtime_id,
+            session_id=session_id,
+            compaction_id=compaction_id,
+            query=fixture["task_prompt"],
+            trigger="current_state_baseline",
+            mode=config.get("mode", "advisory"),
+            max_items=int(config.get("max_items", 6)),
+            max_tokens=int(config.get("max_tokens", 120)),
+            write=True,
+        )
+    )
+    phase2_pack = assemble_continuity_pack(
+        ContinuityPackRequest(
+            memory_cell_path=str(seed.memory_cell),
+            continuity_cell_path=str(seed.continuity_cell),
+            live_cell_path=str(seed.live_cell),
+            runtime_id=runtime_id,
+            session_id=session_id,
+            compaction_id=f"{compaction_id}-phase2",
             query=fixture["task_prompt"],
             trigger="current_state_baseline",
             mode=config.get("mode", "advisory"),
@@ -395,10 +418,10 @@ def run_carry_fixture(fixture: Mapping[str, Any]) -> Dict[str, Any]:
     for entry in fixture.get("continuity_entries", []):
         feedback = record = ContinuityFeedback(
             continuity_cell_path=str(seed.continuity_cell),
-            continuity_pack_id=pack.continuity_pack_id,
-            runtime_id=f"baseline-{fixture['fixture_id']}",
-            session_id=f"session-{fixture['fixture_id']}",
-            compaction_id=f"carry-{fixture['fixture_id']}",
+            continuity_pack_id=phase2_pack.continuity_pack_id,
+            runtime_id=runtime_id,
+            session_id=session_id,
+            compaction_id=compaction_id,
             result=entry.get("result", "synthetic_observation"),
             useful_memory_ids=[seed.memory_by_logical_id[item]["memory_id"] for item in entry.get("useful_ids", []) if item in seed.memory_by_logical_id],
             harmful_memory_ids=[seed.memory_by_logical_id[item]["memory_id"] for item in entry.get("harmful_ids", []) if item in seed.memory_by_logical_id],
@@ -423,11 +446,25 @@ def run_carry_fixture(fixture: Mapping[str, Any]) -> Dict[str, Any]:
         raw_item_count=len(pack.items),
         total_tokens=pack.total_tokens,
         extra={
-            "continuity_mode": pack.mode,
+            "continuity_mode": phase2_pack.mode,
             "continuity_roles": [item.continuity_role for item in pack.items],
             "continuity_status_counts": status["counts"],
             "feedback_events_recorded": len(feedback_summaries),
             "preserved_open_loop_rate": _serialize_resume_counts(surfaced_ids, fixture["expected_resume_state"])["preserved_open_loop_rate"],
+            "carry_state_present": bool(phase2_pack.carry_state),
+            "carry_candidate_count": int(phase2_pack.diagnostics.get("carry_candidate_count") or 0),
+            "memory_candidate_count": int(phase2_pack.diagnostics.get("memory_candidate_count") or 0),
+            "phase2_raw_item_count": len(phase2_pack.items),
+            "phase2_total_tokens": phase2_pack.total_tokens,
+            "phase2_surfaced_ids": list(dict.fromkeys([
+                logical_id
+                for item in phase2_pack.items
+                for logical_id in [
+                    _logical_id_from_statement(seed, item.statement)
+                    or _logical_id_from_live_content(seed, item.statement)
+                ]
+                if logical_id is not None
+            ])),
         },
     )
     result["expectation_evaluation"] = _apply_expected_contract(result, fixture.get("expected_contract", {}), "carry")
@@ -450,6 +487,24 @@ def run_live_fixture(fixture: Mapping[str, Any]) -> Dict[str, Any]:
             current_prompt_excerpts=config.get("current_prompt_excerpts", []),
             write=True,
         )
+    )
+    checkpoint = build_carry_state_checkpoint(
+        CarryStateCheckpointRequest(
+            live_cell_path=str(seed.live_cell),
+            continuity_cell_path=str(seed.continuity_cell),
+            runtime_id=runtime_id,
+            session_id=session_id,
+            max_items=int(config.get("max_items", 6)),
+            max_tokens=int(config.get("max_tokens", 120)),
+            write=True,
+        )
+    )
+    resume = reconstruct_resume_state(
+        seed.continuity_cell,
+        runtime_id=runtime_id,
+        session_id=session_id,
+        max_items=int(config.get("max_items", 6)),
+        max_tokens=int(config.get("max_tokens", 120)),
     )
     harvest = harvest_session(
         SessionHarvestRequest(
@@ -484,6 +539,18 @@ def run_live_fixture(fixture: Mapping[str, Any]) -> Dict[str, Any]:
             "live_context_status_counts": status["counts"],
             "live_context_metrics": metrics,
             "harvest_review_gated": harvest.review_gated,
+            "carry_state_checkpoint_count": metrics.get("carry_state_checkpoint_count"),
+            "carry_state_checkpoint_tokens": metrics.get("carry_state_checkpoint_tokens"),
+            "resume_validation": resume.validation,
+            "checkpoint_total_items": checkpoint.total_items,
+            "checkpoint_total_tokens": checkpoint.total_tokens,
+            "phase2_resume_surfaced_ids": list(dict.fromkeys([
+                logical_id
+                for section_items in resume.sections.values()
+                for item in section_items
+                for logical_id in [_logical_id_from_live_content(seed, item.get("content", ""))]
+                if logical_id is not None
+            ])),
         },
     )
     result["expectation_evaluation"] = _apply_expected_contract(result, fixture.get("expected_contract", {}), "live")
@@ -654,13 +721,16 @@ Python/module:
 Write/dry-run boundary:
 - `mode=shadow` preserves the continuity path without exporting items to the runtime;
 - continuity ledgers are written only inside temp continuity cells;
-- current continuity behavior derives its pack from durable memory plus continuity-specific packaging; it does not consume pre-existing continuity entries as a separate input surface.
+- Phase 2 continuity can merge durable memory with typed carry-state from the live context cell when available;
+- outputs remain bounded and advisory even when carry-state is present.
 
 ## Live-context path
 
 CLI:
 - `shyftr live-context capture ...`
 - `shyftr live-context pack ...`
+- `shyftr live-context checkpoint ...`
+- `shyftr live-context resume ...`
 - `shyftr live-context harvest ...`
 - `shyftr live-context status ...`
 - `shyftr live-context metrics ...`
@@ -670,6 +740,9 @@ Python/module:
 - `shyftr.live_context.capture_live_context(...)`
 - `shyftr.live_context.LiveContextPackRequest`
 - `shyftr.live_context.build_live_context_pack(...)`
+- `shyftr.live_context.CarryStateCheckpointRequest`
+- `shyftr.live_context.build_carry_state_checkpoint(...)`
+- `shyftr.live_context.reconstruct_resume_state(...)`
 - `shyftr.live_context.SessionHarvestRequest`
 - `shyftr.live_context.harvest_session(...)`
 - `shyftr.live_context.live_context_status(...)`
@@ -695,7 +768,7 @@ Harness policy:
 ## Known seams intentionally preserved
 
 - continuity pack behavior is advisory/shadow/off today; stronger authority modes remain gated;
-- live-context metrics currently measure advisory pack and harvest behavior separately;
+- live-context metrics preserve pack-based scoring while recording checkpoint/resume extras separately;
 - pack/loadout terminology is split across CLI, module, and runtime API surfaces;
 - the harness uses only temp cells and synthetic fixtures, so broader runtime or hosted claims remain out of scope.
 """,
@@ -821,7 +894,8 @@ def _write_summary_docs(summary: Mapping[str, Any], output_dir: Path) -> None:
             "",
             "- current synthetic fixtures are rerunnable against temp cells;",
             "- durable/loadout, continuity, and live-context surfaces can be measured today;",
-            "- pack/loadout naming drift is explicit and normalized rather than hidden.",
+            "- pack/loadout naming drift is explicit and normalized rather than hidden;",
+            "- Phase 2 checkpoint and resume validation can be measured deterministically with synthetic fixtures.",
             "",
             "## What this baseline does not prove",
             "",
@@ -859,6 +933,7 @@ def _write_summary_docs(summary: Mapping[str, Any], output_dir: Path) -> None:
         "- tests/test_current_state_metrics_schema.py",
         "- docs/status/current-state-baseline-*.md",
         "- docs/status/current-state-baseline-summary.json",
+        "- docs/status/current-state-baseline-comparison.md",
         "",
         "## Rerun commands",
         "",
@@ -867,6 +942,7 @@ def _write_summary_docs(summary: Mapping[str, Any], output_dir: Path) -> None:
         "python scripts/current_state_baseline.py --mode carry",
         "python scripts/current_state_baseline.py --mode live",
         "python scripts/current_state_baseline.py --mode all",
+        "python scripts/current_state_baseline.py --mode all --summary-path docs/status/current-state-baseline-summary.phase2.json",
         "python scripts/compare_current_state_baseline.py docs/status/current-state-baseline-summary.json docs/status/current-state-baseline-summary.json",
         "```",
         "",

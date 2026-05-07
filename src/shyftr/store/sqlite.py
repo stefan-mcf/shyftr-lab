@@ -19,6 +19,8 @@ from ..ledger import (
     read_retrieval_affinity_events,
 )
 
+from ..memory_classes import resolve_memory_type
+
 PathLike = Union[str, Path]
 
 
@@ -67,6 +69,7 @@ CREATE TABLE IF NOT EXISTS traces (
     cell_id               TEXT NOT NULL,
     statement             TEXT NOT NULL,
     source_fragment_ids   TEXT NOT NULL,
+    memory_type           TEXT,
     rationale             TEXT,
     status                TEXT NOT NULL DEFAULT 'proposed',
     confidence            REAL,
@@ -290,6 +293,10 @@ def _ensure_schema_migrations(conn: sqlite3.Connection) -> None:
             "ADD COLUMN review_sequence INTEGER NOT NULL DEFAULT 0"
         )
 
+    trace_columns = {row[1] for row in conn.execute("PRAGMA table_info(traces)").fetchall()}
+    if "memory_type" not in trace_columns:
+        conn.execute("ALTER TABLE traces ADD COLUMN memory_type TEXT")
+
 
 def open_sqlite(db_path: PathLike) -> sqlite3.Connection:
     """Open (or create) a SQLite database in WAL mode with schema applied.
@@ -473,14 +480,15 @@ def _rebuild_traces(conn: sqlite3.Connection, cell: Path) -> None:
     for _, record in read_jsonl(ledger):
         conn.execute(
             "INSERT OR REPLACE INTO traces "
-            "(trace_id, cell_id, statement, source_fragment_ids, rationale, "
+            "(trace_id, cell_id, statement, source_fragment_ids, memory_type, rationale, "
             " status, confidence, tags, use_count, success_count, failure_count) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 record.get("trace_id"),
                 record.get("cell_id"),
                 record.get("statement"),
                 json.dumps(record.get("source_fragment_ids", []), sort_keys=True),
+                resolve_memory_type(record.get("memory_type"), kind=record.get("kind"), trust_tier="trace"),
                 record.get("rationale"),
                 record.get("status", "proposed"),
                 record.get("confidence"),
