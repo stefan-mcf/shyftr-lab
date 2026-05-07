@@ -207,6 +207,7 @@ agent or runtime
 - `docs/console.md` — local console guide.
 - `docs/concepts/storage-retrieval-learning.md` — ledger/grid/pack/feedback model.
 - `docs/runtime-integration-example.md` — runtime-neutral adapter example.
+- `docs/skills.md` — project-bundled Hermes skill for ShyftR operators.
 - `examples/README.md` — runnable synthetic examples.
 
 ## Development checks
