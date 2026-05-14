@@ -212,6 +212,13 @@ def _compute_loadout_role(kind: Optional[str], selection_reason: Optional[str] =
     reason = str(selection_reason or "").strip().lower()
     normalized_kind = str(kind or "").strip().lower().replace("_", "-")
 
+    if reason == "conflict" or normalized_kind in _CONFLICT_KINDS:
+        return "conflict"
+    if reason == "caution" or normalized_kind in _CAUTION_KINDS:
+        return "caution"
+    if reason == "suppressed":
+        return "background"
+
     resolved_memory_type = resolve_memory_type(memory_type, kind=kind, trust_tier=trust_tier)
     if resolved_memory_type == "rule":
         return "guidance"
@@ -221,10 +228,6 @@ def _compute_loadout_role(kind: Optional[str], selection_reason: Optional[str] =
         return "background"
     if resolved_memory_type == "continuity":
         return "background"
-    if reason == "conflict" or normalized_kind in _CONFLICT_KINDS:
-        return "conflict"
-    if reason == "caution" or normalized_kind in _CAUTION_KINDS:
-        return "caution"
     if reason == "positive_guidance" or normalized_kind in _GUIDANCE_KINDS:
         return "guidance"
     if normalized_kind in _BACKGROUND_KINDS or trust_tier in {"alloy", "fragment"}:
@@ -710,9 +713,6 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
         if total_tokens + item_tokens > task.max_tokens:
             suppressed_ids.append(result.item_id)
             continue
-
-        if selection_reason in {"suppressed", "filtered"}:
-            suppressed_ids.append(result.item_id)
 
         score_trace = {
             **result.components.to_dict(),

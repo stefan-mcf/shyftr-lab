@@ -12,10 +12,6 @@ build/
 node_modules/
 *.tsbuildinfo
 
-# Local/stale test scratch; public proof tests should be re-added intentionally.
-tests/
-test/
-
 .hermes-*-reports/
 .hermes/
 .coverage

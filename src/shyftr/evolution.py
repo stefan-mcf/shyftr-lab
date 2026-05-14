@@ -25,6 +25,7 @@ ALLOWED_PROPOSAL_TYPES = {
     "split_candidate",
     "merge_memories",
     "supersede_memory",
+    "challenge_memory",
     "deprecate_memory",
     "replace_memory",
     "forget_memory",
@@ -34,6 +35,7 @@ ALLOWED_PROPOSAL_TYPES = {
 RETRIEVAL_AFFECTING_TYPES = {
     "merge_memories",
     "supersede_memory",
+    "challenge_memory",
     "deprecate_memory",
     "replace_memory",
     "forget_memory",
@@ -297,6 +299,70 @@ def propose_forgetting_from_policies(memories: Sequence[Mapping[str, Any]], poli
     return proposals
 
 
+def propose_challenges_from_feedback(feedback_records: Sequence[Mapping[str, Any]], memories: Sequence[Mapping[str, Any]], *, min_repeated: int = 2) -> List[JsonRecord]:
+    known = {row["memory_id"]: row for row in (_memory_row(memory) for memory in memories)}
+    counts: Dict[str, List[str]] = {}
+    for record in feedback_records:
+        verdict = str(record.get("verdict") or record.get("result") or "").lower()
+        ids = record.get("challenged_memory_ids") or record.get("questioned_memory_ids") or []
+        if verdict in {"questioned", "challenged", "uncertain", "doubtful"}:
+            ids = list(ids) + list(record.get("memory_ids") or record.get("trace_ids") or [])
+        evidence_ref = str(record.get("feedback_id") or record.get("outcome_id") or record.get("event_id") or "synthetic:feedback")
+        for memory_id in [str(item) for item in ids if item]:
+            counts.setdefault(memory_id, []).append(evidence_ref)
+    proposals: List[JsonRecord] = []
+    for memory_id, refs in sorted(counts.items()):
+        if len(refs) < min_repeated or memory_id not in known:
+            continue
+        proposals.append(EvolutionProposal(
+            proposal_id=new_proposal_id("challenge"),
+            proposal_type="challenge_memory",
+            target_ids=[memory_id],
+            candidate_ids=known[memory_id].get("candidate_ids", []),
+            evidence_refs=_unique(refs),
+            rationale="Repeated questioning feedback indicates this memory should remain visible but be explicitly challenged pending operator review.",
+            confidence=min(0.9, 0.4 + 0.15 * len(refs)),
+            risk_level="high",
+            projection_delta={"active_memory_delta": 0, "status_transition": "approved -> challenged"},
+            requires_simulation=True,
+        ).to_dict())
+    return proposals
+
+
+def propose_missing_memory_promotions(cell_path: PathLike) -> List[JsonRecord]:
+    cell = Path(cell_path)
+    path = cell / "ledger" / "missing_memory_candidates.jsonl"
+    if not path.exists():
+        return []
+    proposals: List[JsonRecord] = []
+    for _, record in read_jsonl(path):
+        candidate_id = str(record.get("candidate_id") or "")
+        text = str(record.get("source_text") or "").strip()
+        if not candidate_id or not text:
+            continue
+        memory_type, kind = _infer_missing_memory_shape(text)
+        proposals.append(EvolutionProposal(
+            proposal_id=new_proposal_id("promote"),
+            proposal_type="promote_missing_memory",
+            target_ids=[],
+            candidate_ids=[candidate_id],
+            evidence_refs=[f"missing-memory:{candidate_id}"],
+            rationale="Repeated missing-memory note suggests a stable durable memory should be proposed through the review-gated evolution track.",
+            confidence=0.72 if memory_type == "semantic" else 0.68,
+            risk_level="medium",
+            projection_delta={"active_memory_delta": 1, "new_memory_type": memory_type},
+            requires_simulation=False,
+            proposed_memory={
+                "statement": text,
+                "memory_type": memory_type,
+                "kind": kind,
+                "candidate_ids": [candidate_id],
+                "rationale": "Derived from a missing-memory candidate after outcome review.",
+            },
+        ).to_dict())
+    return _dedupe_proposals(proposals)
+
+
 def scan_cell(cell_path: PathLike, *, write_proposals: bool = False, max_candidate_chars: int = 360, rate_limit: int = 100) -> JsonRecord:
     cell = Path(cell_path)
     proposals: List[JsonRecord] = []
@@ -305,9 +371,12 @@ def scan_cell(cell_path: PathLike, *, write_proposals: bool = False, max_candida
         if proposal:
             proposals.append(proposal)
     memories = _read_memories(cell)
+    feedback = _read_feedback(cell)
     proposals.extend(propose_memory_consolidation(memories))
-    proposals.extend(propose_supersession_from_feedback(_read_feedback(cell), memories))
+    proposals.extend(propose_supersession_from_feedback(feedback, memories))
+    proposals.extend(propose_challenges_from_feedback(feedback, memories))
     proposals.extend(propose_forgetting_from_policies(memories, _read_policy_events(cell)))
+    proposals.extend(propose_missing_memory_promotions(cell))
     proposals = _dedupe_proposals(proposals)[:rate_limit]
     written: List[JsonRecord] = []
     if write_proposals:
@@ -399,7 +468,10 @@ def evolution_eval_tasks() -> List[JsonRecord]:
         {"task_id": "evolution-duplicate-consolidation", "scenario": "Exact duplicate memories emit merge proposal", "expected": "merge_memories"},
         {"task_id": "evolution-distinct-memory-preserved", "scenario": "Similar but distinct memories are not silently merged", "expected": "no_auto_apply"},
         {"task_id": "evolution-supersession-feedback", "scenario": "Repeated contradiction feedback emits lifecycle proposal", "expected": "deprecate_memory"},
+        {"task_id": "evolution-challenge-feedback", "scenario": "Repeated questioning feedback emits challenge proposal", "expected": "challenge_memory"},
         {"task_id": "evolution-logical-forgetting", "scenario": "Retention marker emits logical forgetting proposal", "expected": "forget_memory"},
+        {"task_id": "evolution-missing-memory-promotion", "scenario": "Missing-memory candidates emit semantic or procedural promotion proposals", "expected": "promote_missing_memory"},
+        {"task_id": "evolution-rehearsal-report", "scenario": "Deterministic rehearsal reports compare promoted memory against held-out tasks", "expected": "rehearsal_report"},
         {"task_id": "evolution-prompt-injection-safe", "scenario": "Malicious evidence cannot force auto apply", "expected": "auto_apply_false"},
         {"task_id": "evolution-rate-limit", "scenario": "Scanner caps proposal storms", "expected": "rate_limited"},
     ]
@@ -411,7 +483,8 @@ def evolution_eval_tasks() -> List[JsonRecord]:
 
 
 def _apply_accepted_proposal(cell: Path, proposal: Mapping[str, Any], *, actor: str, rationale: str) -> List[JsonRecord]:
-    from .mutations import deprecate_charge, forget_charge, redact_charge, replace_charge
+    from .mutations import challenge_charge, deprecate_charge, forget_charge, redact_charge, replace_charge
+    from .provider.memory import remember
 
     events: List[JsonRecord] = []
     ptype = str(proposal.get("proposal_type") or "")
@@ -426,6 +499,9 @@ def _apply_accepted_proposal(cell: Path, proposal: Mapping[str, Any], *, actor: 
     elif ptype in {"deprecate_memory", "supersede_memory"}:
         for memory_id in targets:
             events.append(deprecate_charge(cell, memory_id, reason=reason, actor=actor).__dict__)
+    elif ptype == "challenge_memory":
+        for memory_id in targets:
+            events.append(challenge_charge(cell, memory_id, reason=reason, actor=actor).__dict__)
     elif ptype == "replace_memory":
         statement = str((proposal.get("proposed_memory") or {}).get("statement") or "").strip()
         if not statement:
@@ -453,7 +529,38 @@ def _apply_accepted_proposal(cell: Path, proposal: Mapping[str, Any], *, actor: 
         })
         events.append({"action": "split_proposal_accepted", "auto_promoted_children": False})
     elif ptype == "promote_missing_memory":
-        raise NotImplementedError("promote_missing_memory acceptance is not implemented in the public-safe regulated autonomous memory evolution track baseline")
+        proposed = dict(proposal.get("proposed_memory") or {})
+        statement = str(proposed.get("statement") or "").strip()
+        kind = str(proposed.get("kind") or "preference").strip() or "preference"
+        memory_type = proposed.get("memory_type")
+        if not statement:
+            raise ValueError("promote_missing_memory acceptance requires proposed_memory.statement")
+        result = remember(
+            cell,
+            statement,
+            kind,
+            pulse_context={
+                "actor": actor,
+                "proposal_id": proposal.get("proposal_id"),
+                "candidate_ids": proposal.get("candidate_ids") or [],
+            },
+            metadata={
+                "actor": actor,
+                "reason": reason,
+                "provider_api": "evolution_accept_promote_missing_memory",
+                "memory_type": memory_type,
+                "tags": ["phase5_promotion"],
+            },
+            memory_type=memory_type,
+        )
+        events.append({
+            "action": "promote_missing_memory",
+            "memory_id": result.memory_id,
+            "candidate_id": result.candidate_id,
+            "evidence_id": result.evidence_id,
+            "status": result.status,
+            "memory_type": result.memory_type,
+        })
     return events
 
 
@@ -542,6 +649,72 @@ def _proposal_excluded_ids(proposal: Mapping[str, Any]) -> List[str]:
     if ptype == "merge_memories":
         return targets[1:]
     return []
+
+
+def generate_rehearsal_fixtures(cell_path: PathLike) -> List[JsonRecord]:
+    cell = Path(cell_path)
+    retrieval_by_pack: Dict[str, JsonRecord] = {}
+    path = cell / "ledger" / "retrieval_logs.jsonl"
+    if path.exists():
+        for _, record in read_jsonl(path):
+            pack_id = str(record.get("pack_id") or record.get("loadout_id") or "")
+            if pack_id:
+                retrieval_by_pack[pack_id] = dict(record)
+    outcomes_path = cell / "ledger" / "outcomes.jsonl"
+    fixtures: List[JsonRecord] = []
+    if not outcomes_path.exists():
+        return fixtures
+    for _, outcome in read_jsonl(outcomes_path):
+        pack_id = str(outcome.get("loadout_id") or outcome.get("pack_id") or "")
+        retrieval = retrieval_by_pack.get(pack_id, {})
+        query = str(retrieval.get("query") or outcome.get("task_id") or "synthetic rehearsal review")
+        memory_ids = outcome.get("useful_trace_ids") or outcome.get("useful_charge_ids") or outcome.get("applied_trace_ids") or outcome.get("applied_charge_ids") or []
+        for memory_id in [str(item) for item in memory_ids if item]:
+            fixtures.append({
+                "fixture_id": f"rehearsal-{pack_id or 'no-pack'}-{memory_id}",
+                "query": query,
+                "expected_memory_id": memory_id,
+                "pack_id": pack_id,
+                "task_id": str(outcome.get("task_id") or ""),
+                "outcome_id": str(outcome.get("outcome_id") or ""),
+            })
+    fixtures.sort(key=lambda item: (item["fixture_id"], item["expected_memory_id"]))
+    return fixtures
+
+
+def rehearse_cell(cell_path: PathLike, *, append_report: bool = False, top_k: int = 5) -> JsonRecord:
+    from .provider.memory import search
+
+    cell = Path(cell_path)
+    fixtures = generate_rehearsal_fixtures(cell)
+    results: List[JsonRecord] = []
+    hits = 0
+    for fixture in fixtures:
+        query = str(fixture.get("query") or "")
+        expected_memory_id = str(fixture.get("expected_memory_id") or "")
+        matches = search(cell, query, top_k=top_k)
+        matched_ids = [match.memory_id for match in matches]
+        matched = expected_memory_id in matched_ids
+        if matched:
+            hits += 1
+        results.append({
+            **fixture,
+            "matched": matched,
+            "matched_memory_ids": matched_ids,
+        })
+    report = {
+        "report_id": new_proposal_id("rehearsal"),
+        "status": "ok",
+        "read_only": False,
+        "fixture_count": len(results),
+        "hit_count": hits,
+        "hit_rate": round(hits / len(results), 4) if results else 0.0,
+        "fixtures": results,
+        "created_at": _now(),
+    }
+    if append_report:
+        append_jsonl(cell / "ledger" / "evolution" / "rehearsal_reports.jsonl", report)
+    return report
 
 
 def _ledger_line_counts(cell: Path) -> Dict[str, int]:
@@ -660,6 +833,14 @@ def _unique(items: Iterable[Any]) -> List[str]:
             seen.add(text)
             out.append(text)
     return out
+
+
+def _infer_missing_memory_shape(text: str) -> tuple[str, str]:
+    lowered = text.lower()
+    procedural_markers = ("run ", "before ", "after ", "record ", "verify ", "check ", "use ")
+    if any(marker in lowered for marker in procedural_markers):
+        return ("procedural", "workflow")
+    return ("semantic", "preference")
 
 
 def _now() -> str:

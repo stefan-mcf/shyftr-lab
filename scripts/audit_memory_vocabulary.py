@@ -47,6 +47,17 @@ COMPATIBILITY_DOCS = {
 }
 COMPATIBILITY_TEST_PREFIXES = ('tests/',)
 ARCHIVAL_PREFIXES = ('local-only-plans/', 'local-only-sources/', 'local-only-feeds/')
+ARCHIVAL_ROOT_DOC_PREFIXES = (
+    '2026-05-07-shyftr-phase-',
+    '2026-05-14-shyftr-phase-',
+)
+ARCHIVAL_ROOT_DOCS = {
+    'broad-roadmap-concept.md',
+    'deep-research-report.md',
+    'phase-3-pass-off-report.md',
+    'phase0-current-state-baseline-implementation-report.md',
+    'phase1-implementation-guide.md',
+}
 PUBLIC_PREFIXES = ('README.md','CONTRIBUTING.md','SECURITY.md','CHANGELOG.md','docs/','examples/','apps/console/src/')
 
 @dataclass(frozen=True)
@@ -95,6 +106,8 @@ def classify(rel: str, line: str) -> str:
     if rel.startswith(COMPATIBILITY_TEST_PREFIXES):
         return 'allowed_compatibility_test'
     if rel.startswith(ARCHIVAL_PREFIXES):
+        return 'allowed_compatibility_doc'
+    if rel.startswith(ARCHIVAL_ROOT_DOC_PREFIXES) or rel in ARCHIVAL_ROOT_DOCS:
         return 'allowed_compatibility_doc'
     if 'compatib' in low or 'deprecated' in low or 'migration' in low or 'alias' in low:
         return 'allowed_compatibility_doc'

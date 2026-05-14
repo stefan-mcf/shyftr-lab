@@ -121,7 +121,7 @@ def rebuild_sparse_index(
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 record.get("trace_id"),
-                record.get("cell_id"),
+                record.get("cell_id") or cell_id,
                 record.get("statement", ""),
                 record.get("rationale") or "",
                 tags_text,

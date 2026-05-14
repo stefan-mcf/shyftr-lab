@@ -1,0 +1,9 @@
+2025-04-24T10:00:01Z [INFO] runtime-node-1: task-42 started, cell=cell-main
+2025-04-24T10:00:15Z [INFO] runtime-node-1: retrieval endpoint initialized
+2025-04-24T10:00:22Z [WARN] runtime-node-1: memory store is at 78% capacity
+2025-04-24T10:00:35Z [INFO] runtime-node-1: task-42 finished successfully
+2025-04-24T10:00:36Z [INFO] scheduler: dispatching task-43 to runtime-node-2
+2025-04-24T10:01:00Z [ERROR] runtime-node-2: task-43 failed — timeout after 30s
+2025-04-24T10:01:05Z [WARN] scheduler: dequeuing task-43 for retry
+2025-04-24T10:01:30Z [INFO] runtime-node-2: task-43 retry started
+2025-04-24T10:01:55Z [INFO] runtime-node-2: task-43 completed on retry

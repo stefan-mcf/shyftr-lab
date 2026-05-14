@@ -1,0 +1,27 @@
+{
+  "exported_memories": [
+    {
+      "id": "pref-terminal-concise",
+      "kind": "preference",
+      "memory": "User prefers concise terminal-readable updates.",
+      "tags": ["profile", "style"]
+    },
+    {
+      "id": "workflow-test-before-ready",
+      "kind": "workflow",
+      "memory": "Run focused and full tests before claiming ShyftR replacement readiness.",
+      "tags": ["verification"]
+    },
+    {
+      "id": "noise-queue-state",
+      "kind": "workflow",
+      "memory": "Queue item task-123 is in_progress on branch tmp/replacement-demo.",
+      "tags": ["reject"]
+    }
+  ],
+  "query": "concise updates tests replacement readiness",
+  "result": "success",
+  "missing_memory_notes": [
+    "Need fallback archive proof before bounded-domain primary mode."
+  ]
+}

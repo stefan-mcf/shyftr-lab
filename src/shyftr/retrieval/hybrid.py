@@ -312,6 +312,80 @@ def _compute_selection_reason(
     return SELECTION_POSITIVE
 
 
+def _related_positive_map(candidates: Sequence[CandidateItem]) -> Dict[str, List[CandidateItem]]:
+    """Return negative-space items keyed by related positive item id."""
+    related: Dict[str, List[CandidateItem]] = {}
+    for item in candidates:
+        if not _is_negative_space(item):
+            continue
+        for positive_id in item.related_positive_ids:
+            related.setdefault(str(positive_id), []).append(item)
+    return related
+
+
+def _related_positive_reason(negative_items: Sequence[CandidateItem]) -> str:
+    """Resolve suppression semantics for positives linked to negative-space items."""
+    for item in negative_items:
+        if _norm(item.negative_space_kind or item.kind) == "supersession":
+            return SELECTION_SUPPRESSED
+        if _norm(item.status) in {"superseded", "deprecated"}:
+            return SELECTION_SUPPRESSED
+    return SELECTION_CONFLICT
+
+
+def _apply_related_positive_semantics(
+    results: Sequence[HybridResult],
+    related_map: Dict[str, List[CandidateItem]],
+) -> List[HybridResult]:
+    """Apply conflict/suppression semantics to linked positive guidance items."""
+    adjusted: List[HybridResult] = []
+    for result in results:
+        related_negative_items = related_map.get(result.item_id, [])
+        if not related_negative_items or result.selection_reason != SELECTION_POSITIVE:
+            adjusted.append(result)
+            continue
+
+        adjusted_reason = _related_positive_reason(related_negative_items)
+        score_factor = 0.75 if adjusted_reason == SELECTION_SUPPRESSED else 0.85
+        adjusted_components = ScoreComponents(
+            dense=result.components.dense,
+            sparse=result.components.sparse,
+            kind_match=result.components.kind_match,
+            tag_match=result.components.tag_match,
+            confidence=result.components.confidence,
+            reuse_bonus=result.components.reuse_bonus,
+            reuse_penalty=result.components.reuse_penalty,
+            decay=result.components.decay,
+            deprecation_penalty=result.components.deprecation_penalty,
+            trust_tier=result.components.trust_tier,
+            positive_similarity=result.components.positive_similarity,
+            negative_similarity=result.components.negative_similarity,
+            confidence_weight=result.components.confidence_weight,
+            proven_signal_weight=result.components.proven_signal_weight,
+            symbolic_match_weight=result.components.symbolic_match_weight,
+            risk_penalty=result.components.risk_penalty,
+            selection_reason=adjusted_reason,
+        )
+        adjusted.append(
+            HybridResult(
+                item_id=result.item_id,
+                cell_id=result.cell_id,
+                trust_tier=result.trust_tier,
+                statement=result.statement,
+                rationale=result.rationale,
+                tags=result.tags,
+                kind=result.kind,
+                memory_type=result.memory_type,
+                status=result.status,
+                confidence=result.confidence,
+                final_score=result.final_score * score_factor,
+                components=adjusted_components,
+                selection_reason=adjusted_reason,
+            )
+        )
+    return adjusted
+
+
 # ---------------------------------------------------------------------------
 # Core hybrid search
 # ---------------------------------------------------------------------------
@@ -435,6 +509,7 @@ def hybrid_search(
                 risk_penalty += 0.1 * max(0.0, negative_similarity)
 
         # --- Weighted sum ---
+        utility_signal = proven_signal_weight - 0.5
         raw_score = (
             weights.w_dense * item.dense_score
             + weights.w_sparse * item.sparse_score
@@ -442,6 +517,7 @@ def hybrid_search(
             + weights.w_tag * tag_match
             + weights.w_confidence * conf
             + weights.w_reuse * (reuse_bonus - reuse_penalty)
+            + (weights.w_reuse * 0.25) * utility_signal
             - weights.w_decay * item.decay
             - weights.w_deprecation * dep_penalty
         )
@@ -479,6 +555,7 @@ def hybrid_search(
             proven_signal_weight=proven_signal_weight,
             symbolic_match_weight=symbolic_match_weight,
             risk_penalty=risk_penalty,
+            selection_reason=selection_reason,
         )
 
         results.append(
@@ -499,15 +576,13 @@ def hybrid_search(
             )
         )
 
-    # --- AL-2 related caution handling ---
-    # A related caution should be returned alongside positive guidance by
-    # default; relationship alone is not a conflict.  The caution item is
-    # demoted by caution_coefficient/risk_penalty, while the positive item
-    # keeps its positive_guidance reason unless a future explicit conflict
-    # signal is added to the schema.
+    # --- Phase 4 related caution handling ---
+    related_map = _related_positive_map(candidates)
+    if related_map:
+        results = _apply_related_positive_semantics(results, related_map)
 
     # Sort by final_score descending, break ties by trust tier descending
-    results.sort(key=lambda r: (r.final_score, r.components.trust_tier), reverse=True)
+    results.sort(key=lambda r: (r.final_score, r.components.trust_tier, r.item_id), reverse=True)
     return results[:top_k]
 
 
@@ -542,7 +617,7 @@ def candidates_from_sparse(
             kind=r.kind,
             status=r.status,
             confidence=r.confidence,
-            sparse_score=(r.bm25_score - min_s) / span,
+            sparse_score=(max_s - r.bm25_score) / span,
         )
         for r in results
     ]
