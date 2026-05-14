@@ -260,6 +260,37 @@ class TestRebuildSparseIndex:
         finally:
             conn.close()
 
+    def test_resource_label_is_searchable_without_indexing_raw_locator(self, tmp_path):
+        cell_path = _make_cell(tmp_path)
+
+        from shyftr.ledger import append_jsonl
+        append_jsonl(cell_path / "traces" / "approved.jsonl", {
+            "trace_id": "trace-resource-label",
+            "cell_id": "test-cell",
+            "statement": "Canonical release proof artifact.",
+            "source_fragment_ids": ["frag-resource"],
+            "kind": "tool_quirk",
+            "memory_type": "resource",
+            "resource_ref": {
+                "ref_type": "file",
+                "locator": "artifact://private/final-proof",
+                "label": "Release proof checklist",
+            },
+            "status": "approved",
+            "tags": [],
+        })
+
+        db = tmp_path / "sparse.db"
+        conn = open_sparse_index(db)
+        try:
+            rebuild_sparse_index(conn, cell_path)
+            by_label = query_sparse(conn, "release proof checklist", cell_id="test-cell")
+            by_locator = query_sparse(conn, "artifact://private/final-proof", cell_id="test-cell")
+            assert [row.trace_id for row in by_label] == ["trace-resource-label"]
+            assert by_locator == []
+        finally:
+            conn.close()
+
 
 # ---------------------------------------------------------------------------
 # Tests: query_sparse

@@ -305,6 +305,11 @@ def search(
         score = _score(query_terms, trace)
         if query_terms and score <= 0:
             continue
+        provenance = {"source_fragment_ids": list(trace.source_fragment_ids), "memory_type": resolved_memory_type}
+        if getattr(trace, "resource_ref", None) is not None:
+            provenance["resource_ref"] = trace.resource_ref.to_dict()
+        if getattr(trace, "grounding_refs", None):
+            provenance["grounding_refs"] = list(trace.grounding_refs)
         results.append(
             SearchResult(
                 memory_id=trace.trace_id,
@@ -314,7 +319,7 @@ def search(
                 memory_type=resolved_memory_type,
                 confidence=trace.confidence,
                 score=score,
-                provenance={"source_fragment_ids": list(trace.source_fragment_ids), "memory_type": resolved_memory_type},
+                provenance=provenance,
             )
         )
 

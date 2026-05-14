@@ -248,6 +248,10 @@ class LoadoutItem:
     tags: List[str]
     kind: Optional[str]
     memory_type: Optional[str] = None
+    resource_ref: Optional[Dict[str, Any]] = None
+    grounding_refs: List[str] = field(default_factory=list)
+    sensitivity: Optional[str] = None
+    retention_hint: Optional[str] = None
     confidence: Optional[float] = None
     score: float = 0.0
     score_trace: Dict[str, Any] = field(default_factory=dict)
@@ -263,6 +267,10 @@ class LoadoutItem:
             "tags": self.tags,
             "kind": self.kind,
             "memory_type": self.memory_type,
+            "resource_ref": self.resource_ref,
+            "grounding_refs": list(self.grounding_refs),
+            "sensitivity": self.sensitivity,
+            "retention_hint": self.retention_hint,
             "confidence": self.confidence,
             "score": self.score,
             "score_trace": self.score_trace,
@@ -483,10 +491,14 @@ def _build_candidate_from_trace(record: Dict[str, Any]) -> CandidateItem:
         cell_id=record.get("cell_id", ""),
         trust_tier="trace",
         statement=record.get("statement", ""),
-        rationale=record.get("rationale"),
+        rationale=record.get("rationale") or ((record.get("resource_ref") or {}).get("label") if isinstance(record.get("resource_ref"), dict) else None),
         tags=record.get("tags", []),
         kind=kind,
         memory_type=memory_type,
+        resource_ref=record.get("resource_ref") if isinstance(record.get("resource_ref"), dict) else None,
+        grounding_refs=record.get("grounding_refs", []),
+        sensitivity=record.get("sensitivity") or (record.get("metadata") or {}).get("sensitivity"),
+        retention_hint=record.get("retention_hint") or (record.get("metadata") or {}).get("retention_hint"),
         status=record.get("status", "approved"),
         confidence=record.get("confidence"),
         success_count=record.get("success_count", 0),
@@ -721,6 +733,10 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
             "retrieval_mode": task.retrieval_mode,
             "retrieval_mode_description": mode_config["description"],
             "memory_type": resolve_memory_type(result.memory_type, kind=result.kind, trust_tier=result.trust_tier),
+            "resource_ref": result.resource_ref,
+            "grounding_refs": list(result.grounding_refs),
+            "sensitivity": result.sensitivity,
+            "retention_hint": result.retention_hint,
         }
         items.append(
             LoadoutItem(
@@ -731,6 +747,10 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
                 tags=result.tags,
                 kind=result.kind,
                 memory_type=resolve_memory_type(result.memory_type, kind=result.kind, trust_tier=result.trust_tier),
+                resource_ref=result.resource_ref,
+                grounding_refs=list(result.grounding_refs),
+                sensitivity=result.sensitivity,
+                retention_hint=result.retention_hint,
                 confidence=result.confidence,
                 score=result.final_score,
                 score_trace=score_trace,
@@ -758,6 +778,10 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
                 tags=item.tags,
                 kind=item.kind,
                 memory_type=item.memory_type,
+                resource_ref=item.resource_ref,
+                grounding_refs=list(item.grounding_refs),
+                sensitivity=item.sensitivity,
+                retention_hint=item.retention_hint,
                 confidence=item.confidence,
                 score=item.score,
                 score_trace=item.score_trace,

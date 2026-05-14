@@ -70,6 +70,10 @@ CREATE TABLE IF NOT EXISTS traces (
     statement             TEXT NOT NULL,
     source_fragment_ids   TEXT NOT NULL,
     memory_type           TEXT,
+    resource_ref          TEXT,
+    grounding_refs        TEXT,
+    sensitivity           TEXT,
+    retention_hint        TEXT,
     rationale             TEXT,
     status                TEXT NOT NULL DEFAULT 'proposed',
     confidence            REAL,
@@ -296,6 +300,14 @@ def _ensure_schema_migrations(conn: sqlite3.Connection) -> None:
     trace_columns = {row[1] for row in conn.execute("PRAGMA table_info(traces)").fetchall()}
     if "memory_type" not in trace_columns:
         conn.execute("ALTER TABLE traces ADD COLUMN memory_type TEXT")
+    if "resource_ref" not in trace_columns:
+        conn.execute("ALTER TABLE traces ADD COLUMN resource_ref TEXT")
+    if "grounding_refs" not in trace_columns:
+        conn.execute("ALTER TABLE traces ADD COLUMN grounding_refs TEXT")
+    if "sensitivity" not in trace_columns:
+        conn.execute("ALTER TABLE traces ADD COLUMN sensitivity TEXT")
+    if "retention_hint" not in trace_columns:
+        conn.execute("ALTER TABLE traces ADD COLUMN retention_hint TEXT")
 
 
 def open_sqlite(db_path: PathLike) -> sqlite3.Connection:
@@ -480,15 +492,19 @@ def _rebuild_traces(conn: sqlite3.Connection, cell: Path) -> None:
     for _, record in read_jsonl(ledger):
         conn.execute(
             "INSERT OR REPLACE INTO traces "
-            "(trace_id, cell_id, statement, source_fragment_ids, memory_type, rationale, "
+            "(trace_id, cell_id, statement, source_fragment_ids, memory_type, resource_ref, grounding_refs, sensitivity, retention_hint, rationale, "
             " status, confidence, tags, use_count, success_count, failure_count) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 record.get("trace_id"),
                 record.get("cell_id"),
                 record.get("statement"),
                 json.dumps(record.get("source_fragment_ids", []), sort_keys=True),
                 resolve_memory_type(record.get("memory_type"), kind=record.get("kind"), trust_tier="trace"),
+                json.dumps(record.get("resource_ref"), sort_keys=True) if record.get("resource_ref") is not None else None,
+                json.dumps(record.get("grounding_refs", []), sort_keys=True) if record.get("grounding_refs") is not None else None,
+                record.get("sensitivity"),
+                record.get("retention_hint"),
                 record.get("rationale"),
                 record.get("status", "proposed"),
                 record.get("confidence"),

@@ -175,10 +175,14 @@ class HybridResult:
     tags: List[str]
     kind: Optional[str]
     memory_type: Optional[str]
-    status: str
-    confidence: Optional[float]
-    final_score: float
-    components: ScoreComponents
+    status: str = "approved"
+    confidence: Optional[float] = None
+    final_score: float = 0.0
+    components: ScoreComponents = field(default_factory=ScoreComponents)
+    resource_ref: Optional[Dict[str, Any]] = None
+    grounding_refs: List[str] = field(default_factory=list)
+    sensitivity: Optional[str] = None
+    retention_hint: Optional[str] = None
     selection_reason: str = SELECTION_POSITIVE
 
     def to_dict(self) -> Dict[str, Any]:
@@ -192,6 +196,10 @@ class HybridResult:
             "tags": self.tags,
             "kind": self.kind,
             "memory_type": self.memory_type,
+            "resource_ref": self.resource_ref,
+            "grounding_refs": list(self.grounding_refs),
+            "sensitivity": self.sensitivity,
+            "retention_hint": self.retention_hint,
             "status": self.status,
             "confidence": self.confidence,
             "final_score": self.final_score,
@@ -227,6 +235,10 @@ class CandidateItem:
     tags: List[str] = field(default_factory=list)
     kind: Optional[str] = None
     memory_type: Optional[str] = None
+    resource_ref: Optional[Dict[str, Any]] = None
+    grounding_refs: List[str] = field(default_factory=list)
+    sensitivity: Optional[str] = None
+    retention_hint: Optional[str] = None
     status: str = "approved"
     confidence: Optional[float] = None
     # Score inputs (0.0-1.0 normalised)
@@ -568,6 +580,10 @@ def hybrid_search(
                 tags=item.tags,
                 kind=item.kind,
                 memory_type=item.memory_type,
+                resource_ref=item.resource_ref,
+                grounding_refs=list(item.grounding_refs),
+                sensitivity=item.sensitivity,
+                retention_hint=item.retention_hint,
                 status=item.status,
                 confidence=item.confidence,
                 final_score=final_score,
@@ -612,9 +628,10 @@ def candidates_from_sparse(
             cell_id=r.cell_id,
             trust_tier=trust_tier,
             statement=r.statement,
-            rationale=r.rationale,
+            rationale=(r.rationale or r.label),
             tags=r.tags,
             kind=r.kind,
+            resource_ref={"label": r.label} if r.label else None,
             status=r.status,
             confidence=r.confidence,
             sparse_score=(max_s - r.bm25_score) / span,
@@ -675,18 +692,21 @@ def merge_candidates(
                 rationale=existing.rationale or item.rationale,
                 tags=existing.tags or item.tags,
                 kind=existing.kind or item.kind,
+                memory_type=existing.memory_type or item.memory_type,
+                resource_ref=existing.resource_ref or item.resource_ref,
+                grounding_refs=existing.grounding_refs or item.grounding_refs,
+                sensitivity=existing.sensitivity or item.sensitivity,
+                retention_hint=existing.retention_hint or item.retention_hint,
                 status=existing.status,
                 confidence=existing.confidence or item.confidence,
-                dense_score=item.dense_score,
-                sparse_score=existing.sparse_score,
+                dense_score=max(existing.dense_score, item.dense_score),
+                sparse_score=max(existing.sparse_score, item.sparse_score),
                 success_count=max(existing.success_count, item.success_count),
                 failure_count=max(existing.failure_count, item.failure_count),
-                decay=max(existing.decay, item.decay),
+                decay=min(existing.decay, item.decay),
                 is_deprecated=existing.is_deprecated or item.is_deprecated,
                 is_quarantined=existing.is_quarantined or item.is_quarantined,
-                negative_space_kind=(
-                    existing.negative_space_kind or item.negative_space_kind
-                ),
+                negative_space_kind=existing.negative_space_kind or item.negative_space_kind,
                 related_positive_ids=list(
                     set(existing.related_positive_ids) | set(item.related_positive_ids)
                 ),

@@ -86,6 +86,12 @@ def redact_charge_projection(record: Dict[str, Any], *, reason: str = "sensitive
     redacted = dict(record)
     if sensitivity_for_charge(record) in {"private", "secret", "restricted"}:
         redacted["statement"] = "[REDACTED]"
+        resource_ref = redacted.get("resource_ref")
+        if isinstance(resource_ref, dict):
+            projected_ref = dict(resource_ref)
+            if projected_ref.get("locator"):
+                projected_ref["locator"] = "[REDACTED]"
+            redacted["resource_ref"] = projected_ref
         redacted["redacted"] = True
         redacted["redaction_reason"] = reason
     return redacted

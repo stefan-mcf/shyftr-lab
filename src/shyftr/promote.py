@@ -47,6 +47,11 @@ def promote_fragment(
     if fragment is None:
         raise PromotionError(f"Unknown fragment id: {fragment_id}")
 
+    source_record = _find_source(cell, fragment.source_id)
+    source_metadata = source_record.get("metadata") if isinstance(source_record, dict) else None
+    if not isinstance(source_metadata, dict):
+        source_metadata = {}
+
     trace = Trace(
         trace_id=f"trace-{uuid4().hex}",
         cell_id=fragment.cell_id,
@@ -54,6 +59,18 @@ def promote_fragment(
         source_fragment_ids=[fragment.fragment_id],
         kind=fragment.kind,
         memory_type=resolve_memory_type(memory_type, kind=fragment.kind, trust_tier="trace"),
+        resource_ref=Trace.from_dict({
+            "trace_id": "trace-preview",
+            "cell_id": fragment.cell_id,
+            "statement": statement or fragment.text,
+            "source_fragment_ids": [fragment.fragment_id],
+            "kind": fragment.kind,
+            "memory_type": resolve_memory_type(memory_type, kind=fragment.kind, trust_tier="trace"),
+            "resource_ref": source_metadata.get("resource_ref"),
+        }).resource_ref,
+        grounding_refs=list(source_metadata.get("grounding_refs") or []),
+        sensitivity=source_metadata.get("sensitivity"),
+        retention_hint=source_metadata.get("retention_hint"),
         rationale=rationale or review.get("rationale"),
         status="approved",
         confidence=fragment.confidence,
@@ -98,4 +115,11 @@ def _find_trace(cell: Path, trace_id: str) -> Optional[Trace]:
     for _, record in read_jsonl(cell / "traces" / "approved.jsonl"):
         if record.get("trace_id") == trace_id:
             return Trace.from_dict(record)
+    return None
+
+
+def _find_source(cell: Path, source_id: str) -> Optional[Dict[str, Any]]:
+    for _, record in read_jsonl(cell / "ledger" / "sources.jsonl"):
+        if record.get("source_id") == source_id:
+            return record
     return None

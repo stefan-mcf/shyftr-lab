@@ -194,6 +194,14 @@ def classify_records(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any
 
 def validate_resource_memory(statement: str, metadata: Optional[Mapping[str, Any]] = None) -> None:
     refs = dict(metadata or {})
+    resource_ref = refs.get('resource_ref')
+    if isinstance(resource_ref, dict):
+        locator = str(resource_ref.get('locator') or '').strip()
+        ref_type = str(resource_ref.get('ref_type') or '').strip()
+        if not locator:
+            raise ValueError('resource_ref locator is required for resource memory')
+        if not ref_type:
+            raise ValueError('resource_ref ref_type is required for resource memory')
     has_ref = any(refs.get(key) for key in ('resource_ref', 'resource_refs', 'file_path', 'url', 'code_span', 'log_span', 'artifact_handle', 'artifact_handles', 'evidence_refs', 'grounding_refs'))
     text = str(statement or '')
     lexical_ref = any(token in text for token in ('/', 'http://', 'https://', '.png', '.jpg', '.log', '.py:', '.md:', 'file:', 'url:'))

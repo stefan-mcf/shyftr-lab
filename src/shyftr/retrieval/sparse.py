@@ -32,9 +32,10 @@ class SparseResult:
     rationale: Optional[str]
     tags: List[str]
     kind: Optional[str]
-    status: str
     confidence: Optional[float]
     bm25_score: float
+    label: Optional[str] = None
+    status: str = "approved"
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +50,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS traces_fts USING fts5(
     rationale,
     tags,
     kind,
+    label,
     status UNINDEXED,
     confidence UNINDEXED,
     tokenize='porter unicode61'
@@ -115,10 +117,15 @@ def rebuild_sparse_index(
         tags = record.get("tags", [])
         tags_text = json.dumps(tags, sort_keys=True) if isinstance(tags, list) else str(tags)
 
+        resource_ref = record.get("resource_ref")
+        label = ""
+        if isinstance(resource_ref, dict):
+            label = str(resource_ref.get("label") or "")
+
         conn.execute(
             "INSERT INTO traces_fts "
-            "(trace_id, cell_id, statement, rationale, tags, kind, status, confidence) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "(trace_id, cell_id, statement, rationale, tags, kind, label, status, confidence) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 record.get("trace_id"),
                 record.get("cell_id") or cell_id,
@@ -126,6 +133,7 @@ def rebuild_sparse_index(
                 record.get("rationale") or "",
                 tags_text,
                 record.get("kind") or "",
+                label,
                 status,
                 record.get("confidence"),
             ),
@@ -195,6 +203,7 @@ def query_sparse(
             rationale,
             tags,
             kind,
+            label,
             status,
             confidence,
             bm25(traces_fts) AS bm25_score
@@ -227,9 +236,10 @@ def query_sparse(
                 rationale=row[3],
                 tags=tags,
                 kind=row[5],
-                status=row[6] if isinstance(row[6], str) else str(row[6]),
-                confidence=row[7],
-                bm25_score=row[8],
+                label=row[6] if isinstance(row[6], str) and row[6] else None,
+                status=row[7] if isinstance(row[7], str) else str(row[7]),
+                confidence=row[8],
+                bm25_score=row[9],
             )
         )
 
