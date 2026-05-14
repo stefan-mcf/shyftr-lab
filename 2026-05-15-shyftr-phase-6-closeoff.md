@@ -3,7 +3,7 @@
 Date: 2026-05-15
 Repo: /Users/stefan/ShyftR
 Phase: Phase 6 — resource and multimodal memory
-Status: implementation complete locally, verified green
+Status: complete, verified, committed, and pushed
 Predecessor closeoff: `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-5-closeoff.md`
 Planning artifacts:
 - `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-6-tranche-p6-0-plan.md`
@@ -94,15 +94,14 @@ Docs updated/created:
 - `2026-05-15-shyftr-phase-6-handoff-packet.md`
 - `2026-05-15-shyftr-phase-6-closeoff.md`
 
-## Honest repo state
+## Git and release state
 
-Verification is green, but the work is still local in the current worktree.
-At closeoff time:
+Verified final repo state after push:
 - branch: `main`
-- upstream tracking: `origin/main`
-- modified tracked files are present
-- untracked Phase 6 documentation/tests are present
-- no commit/push was performed in this pass
+- remote: `origin https://github.com/stefan-mcf/shyftr.git`
+- local HEAD = remote `origin/main`
+- pushed commit: `d09a426523c4d56b5df7b4a61f0242519384d963`
+- repo visibility at verification time: `PUBLIC`
 
 ## Outcome
 
@@ -116,4 +115,4 @@ ShyftR now has a complete Phase 6 baseline for reference-first resource memory:
 
 ## One-line summary
 
-Phase 6 is complete locally and fully verified: resource memory now works end to end across schema, storage, retrieval, pack, and privacy without regressing the existing repo.
+Phase 6 is fully done: resource memory now works end to end across schema, storage, retrieval, pack, and privacy; the repo is green, committed, and pushed on `main`.
