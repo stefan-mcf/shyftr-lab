@@ -106,9 +106,9 @@ A real `swarm2` lane was launched during the P7-4/P7-5 continuation. It produced
 ## Final git state
 
 Phase 7 has now been committed and pushed on `main`.
-- final Phase 7 commit: `11036cc22ef380d43bf02171d3b4287e4efaac0b`
+- final Phase 7 commit: `2d2c2af905d4f2244d25f8b9abfda2863caad70f`
 - local `HEAD` matches `origin/main`
 
 ## One-line summary
 
-Phase 7 is complete locally: ShyftR now has the full planned privacy/policy/safety hardening set through P7-5, repo-wide verification is green, and the remaining step is to commit and push the final Phase 7 tranche set.
+Phase 7 is complete and pushed: ShyftR now has the full planned privacy/policy/safety hardening set through P7-5, repo-wide verification is green, and the next step is Phase 8 planning/evaluation only.
