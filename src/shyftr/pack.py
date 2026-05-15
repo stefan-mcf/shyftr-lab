@@ -30,7 +30,7 @@ from .mutations import active_charge_ids
 from .frontier import project_confidence_state
 from .memory_classes import class_spec, resolve_memory_type
 from .policy import check_source_boundary  # noqa: F401 (re-exported for downstream)
-from .privacy import AccessPolicy, is_charge_export_allowed
+from .privacy import AccessPolicy, is_charge_export_allowed, redact_charge_projection
 from .retrieval.hybrid import (
     NEGATIVE_SPACE_KINDS,
     CandidateItem,
@@ -649,7 +649,10 @@ def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
         if not privacy_allowed:
             privacy_suppressed_ids.append(str(trace_id))
             continue
-        candidates.append(_build_candidate_from_trace(project_confidence_state(record)))
+        pack_record = project_confidence_state(record)
+        if not task.audit_mode:
+            pack_record = redact_charge_projection(pack_record)
+        candidates.append(_build_candidate_from_trace(pack_record))
 
     # Alloys (always included)
     for record in _read_alloys(cell_path):
