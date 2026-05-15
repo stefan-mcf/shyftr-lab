@@ -4,7 +4,7 @@ Date: 2026-05-15
 Repo: /Users/stefan/ShyftR
 Phase: Phase 7 — privacy, policy, and safety hardening
 Tranche: P7-2 — privacy/export/redaction deepening
-Status: complete locally, verified green, ready to commit
+Status: committed, pushed, verified green
 Predecessor closeoff: `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-7-p7-1-closeoff.md`
 Planning artifacts:
 - `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-7-tranche-p7-0-plan.md`
@@ -77,6 +77,11 @@ Repo-wide verification:
 - `cd /Users/stefan/ShyftR && python scripts/terminology_inventory.py --fail-on-capitalized-prose` → pass
 - `cd /Users/stefan/ShyftR && python scripts/public_readiness_check.py` → PASS
 - `cd /Users/stefan/ShyftR && git diff --check` → pass
+
+Git and remote state:
+- committed to `main` as `9d9cbc72d5a4d818f866b6f808c0f946cdfd29a9`
+- pushed to `origin/main`
+- remote `origin/main` verified equal to local `HEAD`
 
 ## Implementation touchpoints
 
