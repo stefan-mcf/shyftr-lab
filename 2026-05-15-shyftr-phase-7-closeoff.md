@@ -106,7 +106,7 @@ A real `swarm2` lane was launched during the P7-4/P7-5 continuation. It produced
 ## Final git state
 
 Phase 7 has now been committed and pushed on `main`.
-- final Phase 7 commit: `2d2c2af905d4f2244d25f8b9abfda2863caad70f`
+- final Phase 7 commit: `16ec878fd1f46e0dfaac7469824fe89463f99916`
 - local `HEAD` matches `origin/main`
 
 ## One-line summary

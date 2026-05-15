@@ -56,7 +56,7 @@ ShyftR now has a complete locally verified P7-5 verification tranche for Phase 7
 
 ## Git and remote state
 
-- included in final Phase 7 commit `2d2c2af905d4f2244d25f8b9abfda2863caad70f`
+- included in final Phase 7 commit `16ec878fd1f46e0dfaac7469824fe89463f99916`
 - pushed to `origin/main`
 - local `HEAD` verified equal to remote `origin/main`
 
