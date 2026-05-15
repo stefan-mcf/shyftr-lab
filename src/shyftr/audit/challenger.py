@@ -401,9 +401,21 @@ def _collect_counter_evidence(
             or (target_fragments and related_fragments and target_fragments & related_fragments)
         ):
             continue
+        lowered = spark_text.lower()
+        policy_markers = (
+            "ignore previous instructions",
+            "ignore prior instructions",
+            "disregard previous",
+            "system prompt",
+            "reveal secret",
+            "exfiltrate",
+            "override safety",
+            "export all secrets",
+        )
+        direction = "policy" if any(m in lowered for m in policy_markers) else "ambiguous"
         evidence.append({
             "source": f"ledger/sparks.jsonl:{spark_source}",
-            "direction": "ambiguous",
+            "direction": direction,
             "evidence": spark_text,
             "created_at": spark.get("recorded_at", "") or spark.get("captured_at", ""),
         })
@@ -573,7 +585,27 @@ def _classify_evidence(
             target_confidence=target_metrics.confidence if target_metrics else None,
         ))
 
-    # 5. Ambiguous counter-evidence
+    # 5. Policy conflict (prompt-injection / policy-violating instructions)
+    # This is a conservative, local-only heuristic that never mutates state.
+    policy_items = [e for e in evidence_items if e.get("direction") == "policy"]
+    if policy_items:
+        sources = [e["source"] for e in policy_items[:3]]
+        seen_classifications.add("policy_conflict")
+        findings.append(ChallengerFinding(
+            trace_id=target_trace_id,
+            classification="policy_conflict",
+            rationale=(
+                f"Found {len(policy_items)} policy-conflict signal(s) linked to {target_trace_id} "
+                f"(e.g. prompt-injection-like instruction in evidence)"
+            ),
+            signal_strength=0.45,
+            counter_evidence_source="; ".join(sources),
+            target_status=target_metrics.trace_status if target_metrics else None,
+            target_confidence=target_metrics.confidence if target_metrics else None,
+            supporting_data={"policy_signal": "prompt_injection_like"},
+        ))
+
+    # 6. Ambiguous counter-evidence
     if ambiguous_items:
         sources = [e["source"] for e in ambiguous_items[:3]]
         seen_classifications.add("ambiguous_counterevidence")
