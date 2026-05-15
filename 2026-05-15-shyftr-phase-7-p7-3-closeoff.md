@@ -4,7 +4,7 @@ Date: 2026-05-15
 Repo: /Users/stefan/ShyftR
 Phase: Phase 7 — privacy, policy, and safety hardening
 Tranche: P7-3 — contradiction and poisoning fixtures
-Status: complete locally, verified green, ready to commit
+Status: committed, pushed, verified green
 Predecessor closeoff: `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-7-p7-2-closeoff.md`
 Planning artifacts:
 - `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-7-tranche-p7-0-plan.md`
@@ -56,7 +56,7 @@ Focused tranche regression:
 
 Vocabulary guard:
 - `cd /Users/stefan/ShyftR && PYTHONPATH=.:src pytest -q tests/test_memory_vocabulary_guard.py`
-- initial result: one plan-doc vocabulary failure from `trace/charge` phrasing in the P7-3 plan
+- initial result: one plan-doc vocabulary failure from legacy implementation wording in the P7-3 plan
 - final result after plan normalization: `4 passed`
 
 Repo-wide verification:
