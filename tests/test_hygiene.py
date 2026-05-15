@@ -13,6 +13,7 @@ from shyftr.reports.hygiene import (
     missing_source_references,
     trace_confidence_distribution,
 )
+from shyftr.audit import append_audit_review, append_audit_spark
 
 
 def _source(source_id: str = "s1") -> Source:
@@ -142,6 +143,7 @@ def test_combined_hygiene_report_is_read_only(tmp_path: Path) -> None:
         "missing_source_references",
         "duplicate_traces",
         "conflicting_traces",
+        "audit_findings",
         "miss_summary",
         "misses_by_category",
         "most_missed_charges",
@@ -187,3 +189,37 @@ def test_hygiene_report_surfaces_pack_miss_learning_summaries(tmp_path: Path) ->
             "status": "approved",
         }
     ]
+
+
+def test_hygiene_report_surfaces_audit_visibility_summary(tmp_path: Path) -> None:
+    cell = _cell(tmp_path)
+    append_jsonl(cell / "ledger" / "sources.jsonl", _source("s1").to_dict())
+    append_jsonl(cell / "ledger" / "fragments.jsonl", _fragment("f1", "s1").to_dict())
+    append_jsonl(cell / "traces" / "approved.jsonl", _trace("t1", "Review memory", ["f1"], confidence=0.9).to_dict())
+
+    append_audit_spark(
+        cell,
+        trace_id="t1",
+        classification="policy_conflict",
+        challenger="challenger-bot",
+        rationale="policy issue",
+        counter_evidence_source="ledger/sparks.jsonl:sp-1",
+        cell_id="core",
+        spark_id="spark-1",
+        proposed_at="2026-05-15T00:00:00+00:00",
+    )
+    append_audit_review(
+        cell,
+        audit_id="spark-1",
+        resolution="accept",
+        reviewer="reviewer-bot",
+        rationale="confirmed",
+        review_actions=["no_action"],
+        review_id="review-1",
+        reviewed_at="2026-05-15T00:00:01+00:00",
+    )
+
+    report = hygiene_report(cell)
+    assert report["audit_findings"]["counts"]["policy_conflict"] == 1
+    assert report["audit_findings"]["review_state_counts"]["reviewed"] == 1
+    assert report["audit_findings"]["findings"][0]["latest_resolution"] == "accept"

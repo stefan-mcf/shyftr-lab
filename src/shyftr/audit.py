@@ -331,3 +331,50 @@ def read_audit_reviews_for_audit(cell_path: PathLike, audit_id: str) -> List[Jso
         row for row in read_audit_reviews(cell_path)
         if row.get("audit_id") == audit_id
     ]
+
+
+def audit_summary(cell_path: PathLike) -> JsonRecord:
+    """Return a read-only summary of audit sparks and their review state.
+
+    This review-surface helper makes challenger findings legible without
+    mutating ledgers or introducing any new durable state.
+    """
+    sparks = read_audit_sparks(cell_path)
+    reviews_by_audit_id: Dict[str, List[JsonRecord]] = {}
+    for review in read_audit_reviews(cell_path):
+        audit_id = str(review.get("audit_id") or "")
+        if not audit_id:
+            continue
+        reviews_by_audit_id.setdefault(audit_id, []).append(review)
+
+    counts: Dict[str, int] = {}
+    review_state_counts: Dict[str, int] = {"reviewed": 0, "unreviewed": 0}
+    findings: List[JsonRecord] = []
+    for spark in sparks:
+        classification = str(spark.get("classification") or "unknown")
+        counts[classification] = counts.get(classification, 0) + 1
+        audit_id = str(spark.get("spark_id") or "")
+        linked_reviews = reviews_by_audit_id.get(audit_id, [])
+        review_state = "reviewed" if linked_reviews else "unreviewed"
+        review_state_counts[review_state] += 1
+        findings.append(
+            {
+                "audit_id": audit_id,
+                "trace_id": spark.get("trace_id"),
+                "classification": classification,
+                "review_state": review_state,
+                "review_count": len(linked_reviews),
+                "latest_resolution": linked_reviews[-1].get("resolution") if linked_reviews else None,
+                "latest_review_actions": linked_reviews[-1].get("review_actions", []) if linked_reviews else [],
+                "counter_evidence_source": spark.get("counter_evidence_source", ""),
+                "proposed_at": spark.get("proposed_at") or spark.get("observed_at"),
+            }
+        )
+
+    findings.sort(key=lambda item: (str(item.get("classification") or ""), str(item.get("audit_id") or "")))
+    return {
+        "spark_count": len(sparks),
+        "counts": dict(sorted(counts.items())),
+        "review_state_counts": review_state_counts,
+        "findings": findings,
+    }

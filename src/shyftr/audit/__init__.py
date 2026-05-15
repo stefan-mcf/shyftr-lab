@@ -40,6 +40,11 @@ append_audit_spark = _audit_flat.append_audit_spark
 read_audit_sparks = _audit_flat.read_audit_sparks
 
 # ---------------------------------------------------------------------------
+# Re-export all public symbols — read-only summary helpers
+# ---------------------------------------------------------------------------
+audit_summary = _audit_flat.audit_summary
+
+# ---------------------------------------------------------------------------
 # Re-export all public symbols — audit review helpers
 # ---------------------------------------------------------------------------
 AUDIT_REVIEW_RESOLUTIONS = _audit_flat.AUDIT_REVIEW_RESOLUTIONS

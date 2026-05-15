@@ -60,3 +60,25 @@ def test_challenger_emits_direct_contradiction_for_harmful_outcome_flag(tmp_path
     report = run_challenge(cell, dry_run=True)
     classifications = {f.classification for f in report.findings}
     assert "direct_contradiction" in classifications
+
+
+def test_audit_summary_counts_policy_conflict_from_audit_sparks(tmp_path: Path) -> None:
+    """P7-4 review surface: audit summary makes policy_conflict legible."""
+    from shyftr.audit import append_audit_spark, audit_summary
+
+    cell = init_cell(tmp_path, "safety-cell")
+
+    append_audit_spark(
+        cell,
+        trace_id="mem-1",
+        classification="policy_conflict",
+        challenger="challenger-bot",
+        rationale="policy issue",
+        counter_evidence_source="ledger/sparks.jsonl:sp-1",
+        cell_id="safety-cell",
+        spark_id="spark-policy-1",
+        proposed_at="2026-05-15T00:00:01+00:00",
+    )
+
+    summary = audit_summary(cell)
+    assert summary["counts"]["policy_conflict"] == 1

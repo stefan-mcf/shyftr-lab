@@ -66,6 +66,14 @@ def test_subcommand_help_hygiene() -> None:
     assert "cell_path" in result.stdout or "CELL_PATH" in result.stdout
 
 
+def test_subcommand_help_audit_list_supports_summary_mode() -> None:
+    """audit list --help advertises --summary review-surface mode."""
+    result = _cli("audit", "list", "--help")
+    assert result.returncode == 0
+    assert "--summary" in result.stdout
+    assert "audit" in result.stdout
+
+
 def test_subcommand_help_serve() -> None:
     """Subcommand --help works for optional local service."""
     result = _cli("serve", "--help")
@@ -186,6 +194,7 @@ def test_hygiene_is_callable_and_read_only(tmp_path: Path) -> None:
     report = json.loads(result.stdout)
     assert "fragment_status_counts" in report
     assert "trace_confidence_distribution" in report
+    assert "audit_findings" in report
     # Verify read-only: after hygiene, an unrelated command should work
     result2 = _cli("hygiene", cell)
     assert result2.returncode == 0
@@ -485,6 +494,46 @@ def test_audit_list_after_review(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["audit_row_count"] >= 0
+
+
+def test_audit_list_summary_returns_grouped_visibility_payload(tmp_path: Path) -> None:
+    """audit list --summary groups findings and review state."""
+    cell = str(tmp_path / "summary-cell")
+    init = _cli("init", cell, "--cell-id", "summary-cell")
+    assert init.returncode == 0, init.stderr
+
+    ledger = Path(cell) / "ledger"
+    with (ledger / "audit_sparks.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps({
+            "spark_id": "spark-1",
+            "trace_id": "t1",
+            "classification": "policy_conflict",
+            "action": "challenge",
+            "challenger": "challenger-bot",
+            "rationale": "policy issue",
+            "counter_evidence_source": "ledger/sparks.jsonl:sp-1",
+            "cell_id": "summary-cell",
+            "fragment_id": "frag-1",
+            "proposed_at": "2026-05-15T00:00:00+00:00",
+            "observed_at": "2026-05-15T00:00:00+00:00"
+        }) + "\n")
+
+    review = _cli(
+        "audit", "review", cell,
+        "--audit-id", "spark-1",
+        "--resolution", "accept",
+        "--reviewer", "ci-bot",
+        "--rationale", "Confirmed",
+        "--actions", "no_action",
+    )
+    assert review.returncode == 0, review.stderr
+
+    result = _cli("audit", "list", cell, "--summary")
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["summary"]["counts"]["policy_conflict"] == 1
+    assert payload["summary"]["review_state_counts"]["reviewed"] == 1
+    assert payload["summary"]["findings"][0]["latest_resolution"] == "accept"
 
 
 def test_audit_review_missing_required_arg_exits_nonzero(tmp_path: Path) -> None:

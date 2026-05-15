@@ -1179,11 +1179,18 @@ def _add_adapter(sub: argparse.ArgumentParser) -> None:
 
 def cmd_audit_list(args: argparse.Namespace) -> None:
     """List audit findings (sparks and audit rows) for a Cell."""
-    from shyftr.audit import read_audit_rows, read_audit_sparks
+    from shyftr.audit import audit_summary, read_audit_rows, read_audit_sparks
 
     cell_path = args.cell if args.cell is not None else args.cell_path
     if cell_path is None:
         raise SystemExit("audit list requires cell_path or --cell")
+
+    if args.summary:
+        _print_json({
+            "cell_path": str(cell_path),
+            "summary": audit_summary(cell_path),
+        })
+        return
 
     sparks = read_audit_sparks(cell_path)
     rows = read_audit_rows(cell_path)
@@ -1247,6 +1254,7 @@ def _add_audit(sub: argparse.ArgumentParser) -> None:
     list_parser = audit_sub.add_parser("list", help="List audit findings (sparks and audit rows) for a Cell")
     list_parser.add_argument("cell_path", nargs="?", type=_cell_path, help="path to the Cell directory")
     list_parser.add_argument("--cell", type=_cell_path, default=None, help="path to the Cell directory")
+    list_parser.add_argument("--summary", action="store_true", default=False, help="emit grouped audit visibility summary instead of raw rows")
 
     # audit review
     review_parser = audit_sub.add_parser("review", help="Record a review decision on an audit finding")

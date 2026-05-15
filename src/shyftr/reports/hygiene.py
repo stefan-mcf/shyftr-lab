@@ -194,12 +194,15 @@ def conflicting_traces(cell_path: PathLike) -> List[Dict[str, Any]]:
 
 def hygiene_report(cell_path: PathLike) -> Dict[str, Any]:
     """Return the combined read-only hygiene report for a Cell."""
+    from shyftr.audit import audit_summary
+
     return {
         "fragment_status_counts": fragment_status_counts(cell_path),
         "trace_confidence_distribution": trace_confidence_distribution(cell_path),
         "missing_source_references": missing_source_references(cell_path),
         "duplicate_traces": duplicate_traces(cell_path),
         "conflicting_traces": conflicting_traces(cell_path),
+        "audit_findings": audit_summary(cell_path),
         "miss_summary": miss_summary(cell_path),
         "misses_by_category": misses_by_category(cell_path),
         "most_missed_charges": most_missed_charges(cell_path),

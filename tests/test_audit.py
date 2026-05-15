@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from shyftr.audit import (
+    audit_summary,
     append_audit_review,
     append_audit_row,
     append_audit_spark,
@@ -280,3 +281,53 @@ def test_missing_audit_reviews_ledger_reads_as_empty(tmp_path: Path) -> None:
     ledger.unlink(missing_ok=True)
 
     assert read_audit_reviews(cell) == []
+
+
+def test_audit_summary_surfaces_policy_conflict_and_review_state(tmp_path: Path) -> None:
+    cell = _cell(tmp_path)
+
+    # Seed two sparks: one policy_conflict and one direct_contradiction.
+    append_audit_spark(
+        cell,
+        trace_id="t1",
+        classification="policy_conflict",
+        challenger="challenger-bot",
+        rationale="policy issue",
+        counter_evidence_source="ledger/sparks.jsonl:sp-1",
+        cell_id="core",
+        spark_id="spark-1",
+        proposed_at="2026-05-15T00:00:00+00:00",
+    )
+    append_audit_spark(
+        cell,
+        trace_id="t2",
+        classification="direct_contradiction",
+        challenger="challenger-bot",
+        rationale="contradiction",
+        counter_evidence_source="ledger/outcomes.jsonl:oc-1",
+        cell_id="core",
+        spark_id="spark-2",
+        proposed_at="2026-05-15T00:00:01+00:00",
+    )
+
+    # Review only the policy spark.
+    append_audit_review(
+        cell,
+        audit_id="spark-1",
+        resolution="accept",
+        reviewer="alice",
+        rationale="confirmed",
+        review_actions=["no_action"],
+        review_id="rev-1",
+        reviewed_at="2026-05-15T00:00:02+00:00",
+    )
+
+    summary = audit_summary(cell)
+    assert summary["counts"]["policy_conflict"] == 1
+    assert summary["counts"]["direct_contradiction"] == 1
+    assert summary["review_state_counts"]["reviewed"] == 1
+    assert summary["review_state_counts"]["unreviewed"] == 1
+    assert {f["audit_id"] for f in summary["findings"]} == {"spark-1", "spark-2"}
+    finding_by_id = {f["audit_id"]: f for f in summary["findings"]}
+    assert finding_by_id["spark-1"]["review_state"] == "reviewed"
+    assert finding_by_id["spark-2"]["review_state"] == "unreviewed"
