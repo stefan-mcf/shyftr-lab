@@ -3,7 +3,7 @@
 Date: 2026-05-15
 Repo: /Users/stefan/ShyftR
 Phase: Phase 7 — privacy, policy, and safety hardening
-Status: complete locally, verified green, ready to commit/push
+Status: committed, pushed, verified green
 Predecessor phase closeoff: `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-6-closeoff.md`
 Canonical kickoff plan: `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-7-tranche-p7-0-plan.md`
 
@@ -103,9 +103,11 @@ That means the next logical step after commit/push is:
 
 A real `swarm2` lane was launched during the P7-4/P7-5 continuation. It produced useful tranche-local test work and surfaced a plausible direction, but it remained mid-run and was explicitly terminated once the controller had verified the landed repo state and completed authoritative controller-side reconciliation and closeout. Final source-of-truth verification and canonical closeout artifacts are controller-authored.
 
-## Current git boundary
+## Final git state
 
-At the moment of this closeoff, Phase 7 is complete locally but not yet committed/pushed in this final tranche set. The repo is ready for a final Phase 7 commit/push that should include the P7-4/P7-5 code, tests, and closeout artifacts listed above.
+Phase 7 has now been committed and pushed on `main`.
+- final Phase 7 commit: `11036cc22ef380d43bf02171d3b4287e4efaac0b`
+- local `HEAD` matches `origin/main`
 
 ## One-line summary
 

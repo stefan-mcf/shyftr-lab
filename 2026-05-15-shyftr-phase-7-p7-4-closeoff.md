@@ -4,7 +4,7 @@ Date: 2026-05-15
 Repo: /Users/stefan/ShyftR
 Phase: Phase 7 — privacy, policy, and safety hardening
 Tranche: P7-4 — review surfaces and policy visibility
-Status: complete locally, verified green
+Status: committed, pushed, verified green
 Predecessor closeoff: `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-7-p7-3-closeoff.md`
 Planning artifacts:
 - `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-7-tranche-p7-0-plan.md`
@@ -120,7 +120,7 @@ Those remain for:
 
 ## Swarm attribution
 
-A real `swarm2` lane was launched for bounded P7-4/P7-5 execution support. It produced useful test additions, but remained mid-run and was explicitly terminated after the controller verified and finalized the tranche from file-backed repo state. Final authoritative verification and canonical artifact authorship were controller-side.
+A real `swarm2` lane was launched for bounded P7-4/P7-5 execution support. It produced useful test additions, but remained mid-run and was explicitly terminated after the controller verified and finalized the tranche from file-backed repo state. Final authoritative verification, canonical artifact authorship, and commit/push were controller-side.
 
 ## Outcome
 

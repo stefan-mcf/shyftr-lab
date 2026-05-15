@@ -4,7 +4,7 @@ Date: 2026-05-15
 Repo: /Users/stefan/ShyftR
 Phase: Phase 7 — privacy, policy, and safety hardening
 Tranche: P7-5 — broader safety verification pass
-Status: complete locally, verified green
+Status: committed, pushed, verified green
 Predecessor closeoff: `/Users/stefan/ShyftR/2026-05-15-shyftr-phase-7-p7-4-closeoff.md`
 
 ## Final verdict
@@ -54,6 +54,12 @@ ShyftR now has a complete locally verified P7-5 verification tranche for Phase 7
 - review-surface/policy-visibility improvements remain green
 - repo-wide readiness gates remain green
 
+## Git and remote state
+
+- included in final Phase 7 commit `11036cc22ef380d43bf02171d3b4287e4efaac0b`
+- pushed to `origin/main`
+- local `HEAD` verified equal to remote `origin/main`
+
 ## One-line summary
 
-Phase 7 P7-5 is done locally: the broader safety verification pass is complete and green, clearing Phase 7 for final closeout.
+Phase 7 P7-5 is done and pushed: the broader safety verification pass is complete and green, clearing and closing Phase 7.
