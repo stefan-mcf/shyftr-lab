@@ -18,7 +18,7 @@ The repo now supports reference-first resource memory across schema, provider/st
 ## What landed
 
 1. Canonical resource reference support
-   - `Trace` supports typed `resource_ref` via `ResourceRef`.
+   - Approved memory rows support typed `resource_ref` via `ResourceRef`.
    - `grounding_refs`, `sensitivity`, and `retention_hint` round-trip on approved memory rows.
    - resource memories require a reference handle rather than blob-only content.
 
@@ -35,7 +35,7 @@ The repo now supports reference-first resource memory across schema, provider/st
 4. Pack integration
    - pack candidate building uses safe resource labels for query matching fallback.
    - `LoadoutItem` preserves `resource_ref`, `grounding_refs`, `sensitivity`, and `retention_hint`.
-   - retrieval score traces now expose the same resource metadata for downstream inspection.
+   - retrieval scoring details now expose the same resource metadata for downstream inspection.
 
 5. Privacy hardening
    - sensitive resource-backed rows still redact statement text.

@@ -84,6 +84,9 @@ class SerializableModel:
         allowed.update(cls._field_aliases)
         unknown = sorted(set(canonical_payload) - allowed)
         if unknown:
+            compatibility_ignored = {"row_hash", "previous_row_hash"}
+            unknown = [field_name for field_name in unknown if field_name not in compatibility_ignored]
+        if unknown:
             raise ValueError(f"Unknown field(s): {', '.join(unknown)}")
 
         values = {}

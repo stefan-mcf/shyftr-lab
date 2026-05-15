@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
+SENSITIVE_NESTED_FIELDS = {"locator", "path", "uri", "sha256", "content_digest", "token", "secret"}
+SAFE_NESTED_FIELDS = {"label", "ref_type", "kind", "origin", "span", "safe_display", "source_fragment_ids", "grounding_refs", "trace_id", "cell_id"}
+
 from shyftr.ledger import append_jsonl
 from shyftr.mutations import effective_state_for_charge
 
@@ -86,15 +89,25 @@ def redact_charge_projection(record: Dict[str, Any], *, reason: str = "sensitive
     redacted = dict(record)
     if sensitivity_for_charge(record) in {"private", "secret", "restricted"}:
         redacted["statement"] = "[REDACTED]"
-        resource_ref = redacted.get("resource_ref")
-        if isinstance(resource_ref, dict):
-            projected_ref = dict(resource_ref)
-            if projected_ref.get("locator"):
-                projected_ref["locator"] = "[REDACTED]"
-            redacted["resource_ref"] = projected_ref
+        for key, value in list(redacted.items()):
+            if isinstance(value, dict):
+                redacted[key] = _redact_nested_mapping(value)
         redacted["redacted"] = True
         redacted["redaction_reason"] = reason
     return redacted
+
+
+def _redact_nested_mapping(value: Dict[str, Any]) -> Dict[str, Any]:
+    projected: Dict[str, Any] = {}
+    for key, item in value.items():
+        if isinstance(item, dict):
+            projected[key] = _redact_nested_mapping(item)
+            continue
+        if key in SENSITIVE_NESTED_FIELDS:
+            projected[key] = "[REDACTED]"
+            continue
+        projected[key] = item
+    return projected
 
 
 def filter_charge_records(

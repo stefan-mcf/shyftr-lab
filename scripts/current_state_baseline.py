@@ -301,7 +301,10 @@ def _seed_fixture(fixture: Mapping[str, Any]) -> SeededFixture:
                 "tags": [fixture["fixture_id"], memory["id"], memory.get("kind", "memory")],
                 "fixture_memory_id": memory["id"],
             },
+            allow_direct_durable_memory=True,
         )
+        if result.memory_id is None:
+            raise ValueError(f"fixture durable memory did not promote: {fixture['fixture_id']}:{memory['id']}")
         memory_by_logical_id[memory["id"]] = {
             **memory,
             "memory_id": result.memory_id,

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 from typing import Any, Dict, Iterable, List, Optional
 
+from .memory_classes import DURABLE_MEMORY_TYPES, class_spec
 from .models import TRACE_KINDS
 
 
@@ -37,6 +38,27 @@ class ProviderMemoryPolicyResult:
     @property
     def accepted(self) -> bool:
         return self.status == "accepted"
+
+
+@dataclass(frozen=True)
+class DirectWritePolicy:
+    """Policy controlling whether direct durable writes may auto-promote."""
+
+    allow_direct_durable_memory: bool = False
+    allowed_memory_types: tuple[str, ...] = field(default_factory=lambda: DURABLE_MEMORY_TYPES)
+
+
+@dataclass(frozen=True)
+class DirectWriteDecision:
+    status: str
+    reasons: List[str]
+    review_required: bool
+    trusted_direct_promotion: bool
+    authority: Optional[str]
+
+    @property
+    def accepted(self) -> bool:
+        return self.status in {"accepted", "pending_review"}
 
 
 _POLLUTION_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -135,6 +157,51 @@ def check_provider_memory_policy(
         reasons=[],
         review_required=False,
         trusted_direct_promotion=True,
+    )
+
+
+def evaluate_direct_write_policy(
+    *,
+    kind: str,
+    memory_type: Optional[str],
+    metadata: Optional[Dict[str, Any]] = None,
+    policy: Optional[DirectWritePolicy] = None,
+) -> DirectWriteDecision:
+    """Return whether a provider write may auto-promote or must stay pending review."""
+    active_policy = policy or DirectWritePolicy(
+        allow_direct_durable_memory=bool((metadata or {}).get("allow_direct_durable_memory", False))
+    )
+    spec = class_spec(memory_type, kind=kind, trust_tier="trace")
+    resolved_memory_type = spec.memory_type if spec is not None else memory_type
+    authority = spec.authority if spec is not None else None
+    reasons: List[str] = []
+
+    if resolved_memory_type is not None and resolved_memory_type not in active_policy.allowed_memory_types:
+        reasons.append(f"memory_type not allowed for direct provider writes: {resolved_memory_type}")
+        return DirectWriteDecision(
+            status="rejected",
+            reasons=reasons,
+            review_required=True,
+            trusted_direct_promotion=False,
+            authority=authority,
+        )
+
+    if authority == "reviewed_precedence" and not active_policy.allow_direct_durable_memory:
+        reasons.append(f"direct durable write gated by authority: {authority}")
+        return DirectWriteDecision(
+            status="pending_review",
+            reasons=reasons,
+            review_required=True,
+            trusted_direct_promotion=False,
+            authority=authority,
+        )
+
+    return DirectWriteDecision(
+        status="accepted",
+        reasons=[],
+        review_required=False,
+        trusted_direct_promotion=True,
+        authority=authority,
     )
 
 

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 from uuid import uuid4
 
 from shyftr.ledger import append_jsonl
+from shyftr.ledger_state import latest_by_key
 from shyftr.memory_classes import class_spec, infer_memory_type, resolve_memory_type, validate_resource_memory
 from shyftr.models import Fragment, Source, Trace
 from shyftr.mutations import (
@@ -19,8 +20,8 @@ from shyftr.mutations import (
     forget_charge,
     replace_charge,
 )
-from shyftr.policy import check_provider_memory_policy
-from shyftr.profile import ProfileProjection
+from shyftr.policy import check_provider_memory_policy, evaluate_direct_write_policy
+from shyftr.profile import ProfileProjection, build_profile
 from shyftr.promote import promote_fragment
 from shyftr.review import approve_fragment
 
@@ -29,7 +30,7 @@ PathLike = Union[str, Path]
 
 @dataclass(frozen=True)
 class RememberResult:
-    memory_id: str
+    memory_id: Optional[str]
     evidence_id: str
     candidate_id: str
     status: str
@@ -37,7 +38,7 @@ class RememberResult:
     memory_type: Optional[str] = None
 
     @property
-    def charge_id(self) -> str:
+    def charge_id(self) -> Optional[str]:
         return self.memory_id
 
     @property
@@ -97,8 +98,19 @@ class MemoryProvider:
         kind: str,
         pulse_context: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        *,
+        memory_type: Optional[str] = None,
+        allow_direct_durable_memory: bool = False,
     ) -> RememberResult:
-        return remember(self.cell_path, statement, kind, pulse_context=pulse_context, metadata=metadata)
+        return remember(
+            self.cell_path,
+            statement,
+            kind,
+            pulse_context=pulse_context,
+            metadata=metadata,
+            memory_type=memory_type,
+            allow_direct_durable_memory=allow_direct_durable_memory,
+        )
 
     def remember_trusted(
         self,
@@ -191,6 +203,8 @@ def remember(
     pulse_context: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
     memory_type: Optional[str] = None,
+    *,
+    allow_direct_durable_memory: bool = False,
 ) -> RememberResult:
     """Store explicit memory through ShyftR's Regulator and ledger chain."""
     cell = Path(cell_path)
@@ -207,9 +221,15 @@ def remember(
     resolved_memory_type = resolve_memory_type(memory_type or event_metadata.get("memory_type"), kind=kind, trust_tier="trace")
     if resolved_memory_type is not None:
         event_metadata["memory_type"] = resolved_memory_type
+    event_metadata["allow_direct_durable_memory"] = bool(allow_direct_durable_memory or event_metadata.get("allow_direct_durable_memory", False))
     if resolved_memory_type == "resource":
         validate_resource_memory(clean_statement, event_metadata)
-    policy = check_provider_memory_policy(clean_statement, kind, metadata=event_metadata, raise_on_reject=True)
+    provider_policy = check_provider_memory_policy(clean_statement, kind, metadata=event_metadata, raise_on_reject=True)
+    direct_write = evaluate_direct_write_policy(
+        kind=kind,
+        memory_type=resolved_memory_type,
+        metadata=event_metadata,
+    )
 
     cell_id = _read_cell_id(cell)
     now = _now()
@@ -234,11 +254,28 @@ def remember(
         text=clean_statement,
         source_excerpt=_excerpt(clean_statement),
         boundary_status="accepted",
-        review_status="pending",
+        review_status="approved" if direct_write.trusted_direct_promotion else "pending",
         confidence=0.8,
         tags=list(event_metadata.get("tags", [])) if isinstance(event_metadata.get("tags"), list) else [],
     )
     append_jsonl(cell / "ledger" / "fragments.jsonl", fragment.to_dict())
+
+    regulator_decision = {
+        "status": direct_write.status,
+        "reasons": provider_policy.reasons + direct_write.reasons,
+        "review_required": provider_policy.review_required or direct_write.review_required,
+        "trusted_direct_promotion": provider_policy.trusted_direct_promotion and direct_write.trusted_direct_promotion,
+        "authority": direct_write.authority,
+    }
+
+    if not direct_write.trusted_direct_promotion:
+        return RememberResult(
+            memory_id=None,
+            evidence_id=source.source_id,
+            candidate_id=fragment.fragment_id,
+            status="pending_review",
+            memory_type=resolved_memory_type,
+        )
 
     review = approve_fragment(
         cell,
@@ -247,12 +284,7 @@ def remember(
         rationale="trusted explicit memory provider write accepted by Regulator policy",
         metadata={
             "provider_api": "remember",
-            "regulator_decision": {
-                "status": policy.status,
-                "reasons": policy.reasons,
-                "review_required": policy.review_required,
-                "trusted_direct_promotion": policy.trusted_direct_promotion,
-            },
+            "regulator_decision": regulator_decision,
         },
     )
 
@@ -319,6 +351,8 @@ def search(
                 memory_type=resolved_memory_type,
                 confidence=trace.confidence,
                 score=score,
+                lifecycle_status="approved",
+                selection_rationale="lexical_overlap",
                 provenance=provenance,
             )
         )
@@ -328,40 +362,29 @@ def search(
 
 
 def profile(cell_path: PathLike, max_tokens: int = 2000) -> ProfileProjection:
-    """Build a compact profile projection from reviewed memory."""
-    from shyftr.profile import build_profile
-
     return build_profile(cell_path, max_tokens=max_tokens)
 
 
-def _lifecycle_result_from_event(event: Any) -> LifecycleEventResult:
-    payload = dict(event.__dict__)
-    if "memory_id" not in payload and "charge_id" in payload:
-        payload["memory_id"] = payload.pop("charge_id")
-    if "replacement_memory_id" not in payload and "replacement_charge_id" in payload:
-        payload["replacement_memory_id"] = payload.pop("replacement_charge_id")
-    return LifecycleEventResult(**payload)
-
-
-def forget(cell_path: PathLike, charge_id: str, reason: str, actor: str) -> LifecycleEventResult:
+def forget(cell_path: PathLike, charge_id: str, *, reason: str, actor: str) -> LifecycleEventResult:
     event = forget_charge(cell_path, charge_id, reason=reason, actor=actor)
-    return _lifecycle_result_from_event(event)
+    return LifecycleEventResult(event_id=event.event_id, action=event.action, memory_id=event.charge_id, reason=reason, actor=actor)
 
 
-def deprecate(cell_path: PathLike, charge_id: str, reason: str, actor: str) -> LifecycleEventResult:
-    event = deprecate_charge(cell_path, charge_id, reason=reason, actor=actor)
-    return _lifecycle_result_from_event(event)
-
-
-def replace(
-    cell_path: PathLike,
-    charge_id: str,
-    new_statement: str,
-    reason: str,
-    actor: str,
-) -> LifecycleEventResult:
+def replace(cell_path: PathLike, charge_id: str, new_statement: str, *, reason: str, actor: str) -> LifecycleEventResult:
     event = replace_charge(cell_path, charge_id, new_statement, reason=reason, actor=actor)
-    return _lifecycle_result_from_event(event)
+    return LifecycleEventResult(
+        event_id=event.event_id,
+        action=event.action,
+        memory_id=event.charge_id,
+        reason=reason,
+        actor=actor,
+        replacement_memory_id=event.replacement_charge_id,
+    )
+
+
+def deprecate(cell_path: PathLike, charge_id: str, *, reason: str, actor: str) -> LifecycleEventResult:
+    event = deprecate_charge(cell_path, charge_id, reason=reason, actor=actor)
+    return LifecycleEventResult(event_id=event.event_id, action=event.action, memory_id=event.charge_id, reason=reason, actor=actor)
 
 
 def pack(
@@ -373,7 +396,7 @@ def pack(
     max_items: int = 10,
     max_tokens: int = 2000,
 ) -> Dict[str, Any]:
-    from shyftr.pack import LoadoutTaskInput, assemble_loadout
+    from shyftr.loadout import LoadoutTaskInput, assemble_loadout
     from shyftr.observability import append_diagnostic_log, operation_timer
 
     with operation_timer() as timer:
@@ -464,42 +487,68 @@ def import_snapshot(cell_path: PathLike, snapshot: Dict[str, Any]) -> Dict[str, 
 
 
 def _read_cell_id(cell: Path) -> str:
-    manifest_path = cell / "config" / "cell_manifest.json"
-    if not manifest_path.exists():
-        raise ValueError(f"Cell manifest does not exist: {manifest_path}")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    cell_id = manifest.get("cell_id")
-    if not cell_id:
-        raise ValueError("Cell manifest is missing cell_id")
-    return str(cell_id)
+    manifest_path = cell / "manifest.json"
+    if manifest_path.exists():
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return str(payload.get("cell_id") or cell.name)
+    return cell.name
 
 
-def _require_text(value: str, field_name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{field_name} is required")
-    return " ".join(value.split())
+def _require_text(value: str, name: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        raise ValueError(f"{name} is required")
+    return text
 
 
-def _terms(value: str) -> set[str]:
-    return set(re.findall(r"[a-z0-9]+", value.lower()))
+def _excerpt(text: str, limit: int = 120) -> str:
+    collapsed = re.sub(r"\s+", " ", text.strip())
+    return collapsed if len(collapsed) <= limit else collapsed[: limit - 1] + "…"
+
+
+def _terms(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9_]+", str(text or "").lower()))
 
 
 def _score(query_terms: set[str], trace: Trace) -> float:
-    haystack_terms = _terms(" ".join([trace.statement, trace.kind or "", " ".join(trace.tags)]))
     if not query_terms:
-        return float(trace.confidence or 0.0)
-    overlap = len(query_terms & haystack_terms)
-    if overlap == 0:
         return 0.0
-    return overlap + float(trace.confidence or 0.0)
+    haystack = " ".join(
+        [
+            trace.statement,
+            trace.rationale or "",
+            trace.kind or "",
+            " ".join(trace.tags),
+            trace.resource_ref.label if trace.resource_ref and trace.resource_ref.label else "",
+        ]
+    )
+    overlap = query_terms & _terms(haystack)
+    if not overlap:
+        return 0.0
+    return min(1.0, len(overlap) / max(len(query_terms), 1))
 
 
-def _token_count(text: str) -> int:
-    return len(text.split()) if text else 0
+def approved_traces(cell_path: PathLike) -> List[Trace]:
+    cell = Path(cell_path)
+    rows = [record for _, record in _read_jsonl_safe(cell / "traces" / "approved.jsonl")]
+    latest_rows = latest_by_key(rows, "trace_id")
+    traces: List[Trace] = []
+    for record in latest_rows:
+        traces.append(Trace.from_dict(record))
+    return traces
 
 
-def _excerpt(text: str) -> str:
-    return text[:120]
+def _read_jsonl_safe(path: Path):
+    if not path.exists():
+        return []
+    rows = []
+    with path.open("r", encoding="utf-8") as fh:
+        for idx, line in enumerate(fh, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            rows.append((idx, json.loads(line)))
+    return rows
 
 
 def _now() -> str:
