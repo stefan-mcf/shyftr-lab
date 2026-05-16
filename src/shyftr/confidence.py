@@ -98,11 +98,26 @@ def _read_outcomes(cell_path: Path) -> List[Dict[str, Any]]:
 
 
 def _trace_by_id(cell_path: Path, trace_id: str) -> Optional[Dict[str, Any]]:
-    """Find the latest approved trace row by logical id."""
+    """Find the latest trace row by logical id and require it to be approved.
+
+    Phase-9 contract: traces/approved.jsonl is append-only; multiple rows may exist
+    for the same logical id. We must apply latest-row-wins semantics AND respect
+    the lifecycle status of that latest row.
+    """
     records = _read_traces(cell_path)
     latest = latest_record_by_key(records, "trace_id", trace_id)
     if latest is None:
         latest = latest_record_by_key(records, "memory_id", trace_id)
+
+    if latest is None:
+        return None
+
+    # Explicitly require approved status; if a later row marks it rejected/retired,
+    # it must not participate in confidence adjustment. Legacy approved rows may
+    # omit status, matching pack retrieval's compatibility default.
+    if latest.get("status", "approved") != "approved":
+        return None
+
     return latest
 
 

@@ -23,8 +23,8 @@ from typing import Any, Dict, List, Optional
 from ..pack import (
     AssembledLoadout,
     LoadoutItem,
-    LoadoutTaskInput,
-    assemble_loadout,
+    PackTaskInput,
+    assemble_pack,
     estimate_tokens,
 )
 
@@ -332,8 +332,8 @@ def process_runtime_loadout_request(request: RuntimeLoadoutRequest) -> RuntimeLo
 
     This is the core integration entry point for RI-5.  It:
 
-    1. Maps the runtime request to the internal LoadoutTaskInput schema.
-    2. Calls assemble_loadout for scoring, filtering, and limit enforcement.
+    1. Maps the runtime request to the internal PackTaskInput schema.
+    2. Calls assemble_pack for scoring, filtering, and limit enforcement.
     3. Categorizes items into guidance/caution/background/conflict groups.
     4. Attaches risk flags.
     5. Returns a stable, schema-versioned response.
@@ -342,7 +342,7 @@ def process_runtime_loadout_request(request: RuntimeLoadoutRequest) -> RuntimeLo
     loadout_id = f"lo-{uuid.uuid4().hex[:12]}"
 
     # Map to internal task input
-    task_input = LoadoutTaskInput(
+    task_input = PackTaskInput(
         cell_path=request.cell_path_or_id,
         query=request.query,
         task_id=request.external_task_id or request.query[:40],
@@ -359,7 +359,7 @@ def process_runtime_loadout_request(request: RuntimeLoadoutRequest) -> RuntimeLo
     )
 
     # Assemble the Loadout
-    assembled = assemble_loadout(task_input)
+    assembled = assemble_pack(task_input)
 
     # Categorize items
     guidance_items: List[Dict[str, Any]] = []

@@ -139,6 +139,24 @@ class TestConfidenceIncrease:
         assert second[0].new_confidence == pytest.approx(0.60)
 
 
+    def test_legacy_useful_trace_without_status_still_increases(self, tmp_path):
+        cell = _make_cell(tmp_path)
+        legacy = _make_trace("t1", confidence=0.5)
+        legacy.pop("status")
+        _seed_traces(cell, [legacy])
+
+        adjustments = adjust_confidence(
+            cell_path=cell,
+            outcome_id="oc-legacy-status",
+            useful_trace_ids=["t1"],
+            harmful_trace_ids=[],
+            result="success",
+        )
+
+        assert len(adjustments) == 1
+        assert adjustments[0].new_confidence == pytest.approx(0.55)
+
+
 # ---------------------------------------------------------------------------
 # Confidence decrease after harmful/failed/contradicted
 # ---------------------------------------------------------------------------

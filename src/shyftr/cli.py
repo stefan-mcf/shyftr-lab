@@ -279,7 +279,7 @@ def _add_profile(sub: argparse.ArgumentParser) -> None:
 
 
 def cmd_pack(args: argparse.Namespace) -> None:
-    from shyftr.pack import LoadoutTaskInput, assemble_loadout
+    from shyftr.pack import PackTaskInput, assemble_pack
 
     if args.request_json:
         import json as _json
@@ -293,7 +293,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         _print_json(response.to_dict())
         return
 
-    task = LoadoutTaskInput(
+    task = PackTaskInput(
         cell_path=str(args.cell_path),
         query=args.query,
         task_id=args.task_id,
@@ -309,7 +309,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         retrieval_mode=args.retrieval_mode,
     )
 
-    assembled = assemble_loadout(task)
+    assembled = assemble_pack(task)
     _print_json(_canonicalize_record(assembled.to_dict()))
 
 
@@ -329,6 +329,33 @@ def _add_pack(sub: argparse.ArgumentParser) -> None:
     sub.add_argument("--project-id", type=str, default=None, help="project identity for sensitivity policy checks")
     sub.add_argument("--allowed-sensitivity", type=str, default=None, help="comma-separated sensitivity levels explicitly allowed for export")
     sub.add_argument("--retrieval-mode", type=str, default="balanced", choices=("balanced", "conservative", "exploratory", "risk_averse", "audit", "rule_only", "low_latency"), help="explicit retrieval mode (default: balanced)")
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: eval-bundle
+# ---------------------------------------------------------------------------
+
+
+def cmd_eval_bundle(args: argparse.Namespace) -> None:
+    """Run the local evaluation-bundle builder through the CLI surface."""
+    from shyftr.evaluation_bundle import main as eval_bundle_main
+
+    exit_code = eval_bundle_main([
+        "--cell-root",
+        str(args.cell_root),
+        "--cell-id",
+        str(args.cell_id),
+        "--output-dir",
+        str(args.output_dir),
+    ])
+    if exit_code:
+        sys.exit(int(exit_code))
+
+
+def _add_eval_bundle(sub: argparse.ArgumentParser) -> None:
+    sub.add_argument("--cell-root", required=True, type=Path, help="directory under which to create or locate the evaluation Cell")
+    sub.add_argument("--cell-id", required=True, help="cell id to create under --cell-root")
+    sub.add_argument("--output-dir", required=True, type=Path, help="output directory for the evaluation bundle")
 
 
 # ---------------------------------------------------------------------------
@@ -1647,6 +1674,7 @@ def _resolve_subcommand(args: argparse.Namespace) -> None:
         "profile": cmd_profile,
         "loadout": cmd_pack,
         "pack": cmd_pack,
+        "eval-bundle": cmd_eval_bundle,
         "outcome": cmd_feedback,
         "signal": cmd_feedback,
         "feedback": cmd_feedback,
@@ -1822,6 +1850,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_profile(sub.add_parser("profile", help="Build rebuildable profile projection artifacts"))
     _add_pack(sub.add_parser("loadout", help="Deprecated alias: assemble a bounded memory pack"))
     _add_pack(sub.add_parser("pack", help="Assemble a bounded memory pack"))
+    _add_eval_bundle(sub.add_parser("eval-bundle", help="Build a local-first evaluation bundle"))
     _add_feedback(sub.add_parser("outcome", help="Deprecated alias: record feedback for a pack"))
     _add_feedback(sub.add_parser("signal", help="Deprecated alias: record feedback for a pack"))
     _add_feedback(sub.add_parser("feedback", help="Record feedback for a pack"))

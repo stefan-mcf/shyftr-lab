@@ -109,10 +109,13 @@ CREATE TABLE IF NOT EXISTS promotions (
 CREATE TABLE IF NOT EXISTS retrieval_logs (
     retrieval_id  TEXT PRIMARY KEY,
     cell_id       TEXT NOT NULL,
+    pack_id       TEXT,
+    loadout_id    TEXT,
     query         TEXT,
     selected_ids  TEXT,
     score_traces  TEXT,
-    logged_at     TEXT NOT NULL
+    logged_at     TEXT NOT NULL,
+    generated_at  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS outcomes (
@@ -232,8 +235,8 @@ FROM (
             ORDER BY le.created_at DESC, le.event_sequence DESC, le.event_id DESC
         ) AS lifecycle_rank
     FROM lifecycle_events le
-    WHERE le.action IN ('forget', 'replace', 'deprecate', 'isolate', 'redact')
-       OR le.status IN ('forgotten', 'superseded', 'deprecated', 'isolated', 'redacted')
+    WHERE le.action IN ('forget', 'replace', 'deprecate', 'isolate', 'challenge', 'isolation_candidate', 'restore', 'redact')
+       OR le.status IN ('forgotten', 'superseded', 'deprecated', 'isolated', 'challenged', 'isolation_candidate', 'active', 'redacted')
 ) ranked
 WHERE ranked.lifecycle_rank = 1;
 
@@ -253,6 +256,9 @@ SELECT
             WHEN le.action = 'replace' THEN 'superseded'
             WHEN le.action = 'deprecate' THEN 'deprecated'
             WHEN le.action = 'isolate' THEN 'isolated'
+            WHEN le.action = 'challenge' THEN 'challenged'
+            WHEN le.action = 'isolation_candidate' THEN 'isolation_candidate'
+            WHEN le.action = 'restore' THEN 'current'
             WHEN le.action = 'redact' THEN 'redacted'
             ELSE le.status
         END,
@@ -263,15 +269,15 @@ SELECT
         END
     ) AS lifecycle_state,
     CASE
-        WHEN COALESCE(le.action, le.status) IN ('forget', 'forgotten', 'replace', 'superseded', 'deprecate', 'deprecated', 'isolate', 'isolated', 'redact', 'redacted') THEN 0
+        WHEN COALESCE(le.action, le.status) IN ('forget', 'forgotten', 'replace', 'superseded', 'deprecate', 'deprecated', 'isolate', 'isolated', 'isolation_candidate', 'redact', 'redacted') THEN 0
         ELSE 1
     END AS include_in_retrieval,
     CASE
-        WHEN COALESCE(le.action, le.status) IN ('forget', 'forgotten', 'replace', 'superseded', 'deprecate', 'deprecated', 'isolate', 'isolated', 'redact', 'redacted') THEN 0
+        WHEN COALESCE(le.action, le.status) IN ('forget', 'forgotten', 'replace', 'superseded', 'deprecate', 'deprecated', 'isolate', 'isolated', 'isolation_candidate', 'redact', 'redacted') THEN 0
         ELSE 1
     END AS include_in_profile,
     CASE
-        WHEN COALESCE(le.action, le.status) IN ('forget', 'forgotten', 'replace', 'superseded', 'deprecate', 'deprecated', 'isolate', 'isolated', 'redact', 'redacted') THEN 0
+        WHEN COALESCE(le.action, le.status) IN ('forget', 'forgotten', 'replace', 'superseded', 'deprecate', 'deprecated', 'isolate', 'isolated', 'isolation_candidate', 'redact', 'redacted') THEN 0
         ELSE 1
     END AS include_in_pack,
     le.replacement_charge_id,
@@ -308,6 +314,14 @@ def _ensure_schema_migrations(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE traces ADD COLUMN sensitivity TEXT")
     if "retention_hint" not in trace_columns:
         conn.execute("ALTER TABLE traces ADD COLUMN retention_hint TEXT")
+
+    retrieval_log_columns = {row[1] for row in conn.execute("PRAGMA table_info(retrieval_logs)").fetchall()}
+    if "pack_id" not in retrieval_log_columns:
+        conn.execute("ALTER TABLE retrieval_logs ADD COLUMN pack_id TEXT")
+    if "loadout_id" not in retrieval_log_columns:
+        conn.execute("ALTER TABLE retrieval_logs ADD COLUMN loadout_id TEXT")
+    if "generated_at" not in retrieval_log_columns:
+        conn.execute("ALTER TABLE retrieval_logs ADD COLUMN generated_at TEXT")
 
 
 def open_sqlite(db_path: PathLike) -> sqlite3.Connection:
@@ -570,19 +584,24 @@ def _rebuild_retrieval_logs(conn: sqlite3.Connection, cell: Path) -> None:
     if not ledger.exists():
         return
     for _, record in read_jsonl(ledger):
+        pack_id = record.get("pack_id") or record.get("loadout_id")
+        logged_at = record.get("logged_at") or record.get("generated_at")
         conn.execute(
             "INSERT OR REPLACE INTO retrieval_logs "
-            "(retrieval_id, cell_id, query, selected_ids, score_traces, logged_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "(retrieval_id, cell_id, pack_id, loadout_id, query, selected_ids, score_traces, logged_at, generated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 record.get("retrieval_id"),
                 record.get("cell_id") or _read_cell_id(cell),
+                pack_id,
+                record.get("loadout_id") or pack_id,
                 record.get("query"),
                 json.dumps(record.get("selected_ids", []), sort_keys=True)
                 if record.get("selected_ids") is not None else None,
                 json.dumps(record.get("score_traces"), sort_keys=True)
                 if record.get("score_traces") is not None else None,
-                record.get("logged_at") or record.get("generated_at"),
+                logged_at,
+                record.get("generated_at") or logged_at,
             ),
         )
 

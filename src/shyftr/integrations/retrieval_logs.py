@@ -16,8 +16,10 @@ PathLike = Union[str, Path]
 
 _PUBLIC_RETRIEVAL_LOG_FIELDS = (
     "retrieval_id",
+    "pack_id",
     "loadout_id",
     "query",
+    "logged_at",
     "generated_at",
     "selected_ids",
     "candidate_ids",
@@ -83,6 +85,14 @@ def sanitize_retrieval_log(row: Dict[str, Any]) -> Dict[str, Any]:
     """Return only public contract fields from a retrieval log row."""
 
     sanitized = {key: row[key] for key in _PUBLIC_RETRIEVAL_LOG_FIELDS if key in row}
+    if "pack_id" not in sanitized and "loadout_id" in sanitized:
+        sanitized["pack_id"] = sanitized["loadout_id"]
+    if "loadout_id" not in sanitized and "pack_id" in sanitized:
+        sanitized["loadout_id"] = sanitized["pack_id"]
+    if "logged_at" not in sanitized and "generated_at" in sanitized:
+        sanitized["logged_at"] = sanitized["generated_at"]
+    if "generated_at" not in sanitized and "logged_at" in sanitized:
+        sanitized["generated_at"] = sanitized["logged_at"]
     for key in ("selected_ids", "candidate_ids", "caution_ids", "suppressed_ids"):
         if key in sanitized:
             sanitized[key] = _ids(sanitized[key])

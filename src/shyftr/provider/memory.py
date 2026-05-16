@@ -316,7 +316,10 @@ def search(
 ) -> List[SearchResult]:
     """Search reviewed memory using a lightweight ShyftR-native provider surface."""
     cell = Path(cell_path)
-    requested_tiers = set(trust_tiers or ["trace"])
+    requested_tiers = {
+        "trace" if str(tier) == "memory" else str(tier)
+        for tier in (trust_tiers or ["trace"])
+    }
     requested_kinds = set(kinds or [])
     requested_memory_types = {resolve_memory_type(item) for item in (memory_types or []) if item is not None}
     active_ids = active_charge_ids(cell, projection="retrieval")
@@ -396,12 +399,12 @@ def pack(
     max_items: int = 10,
     max_tokens: int = 2000,
 ) -> Dict[str, Any]:
-    from shyftr.loadout import LoadoutTaskInput, assemble_loadout
+    from shyftr.pack import PackTaskInput, assemble_pack
     from shyftr.observability import append_diagnostic_log, operation_timer
 
     with operation_timer() as timer:
-        assembled = assemble_loadout(
-            LoadoutTaskInput(
+        assembled = assemble_pack(
+            PackTaskInput(
                 cell_path=str(cell_path),
                 query=query,
                 task_id=task_id,

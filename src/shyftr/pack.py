@@ -567,8 +567,8 @@ def _build_candidate_from_fragment(record: Dict[str, Any]) -> CandidateItem:
 # Core assembly
 # ---------------------------------------------------------------------------
 
-def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
-    """Assemble a bounded, trust-labeled memory Loadout from a Cell.
+def assemble_pack(task: LoadoutTaskInput) -> AssembledLoadout:
+    """Assemble a bounded, trust-labeled memory Pack from a Cell.
 
     1. Reads Doctrine, Traces, Alloys, and optionally Fragments from the Cell.
     2. Builds candidates and scores them via hybrid search.
@@ -840,8 +840,9 @@ PackItem = LoadoutItem
 AssembledPack = AssembledLoadout
 
 
-def assemble_pack(task: PackTaskInput) -> AssembledPack:
-    return assemble_loadout(task)
+def assemble_loadout(task: LoadoutTaskInput) -> AssembledLoadout:
+    """Compatibility wrapper for the canonical assemble_pack path."""
+    return assemble_pack(task)
 
 
 __all__ = [
