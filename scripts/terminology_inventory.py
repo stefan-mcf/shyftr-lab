@@ -117,8 +117,12 @@ def is_allowed_stale(rel: str, line: str) -> tuple[bool, str]:
         return True, "provenance source-cell field"
     if "source .venv/bin/activate" in low or ". .venv/bin/activate" in low:
         return True, "shell activation command"
-    if "source code" in low or "open source" in low or "source file" in low or "source material" in low or "source note" in low or "source identity" in low or "source metadata" in low or "source hash" in low or "source id" in low or "source reference" in low or "source category" in low or "source module" in low or "source workspace" in low or "source context" in low or "source memory" in low or "source tree" in low or "source-tree" in low or "source-root" in low or "source_root" in low or "providing the sources" in low or "source and target" in low or "source quality" in low or "source ledger" in low or "source evidence" in low or "proposal source" in low or "truth source" in low or "the source." in low or "report_feed" in low:
+    if "source code" in low or "open source" in low or "source file" in low or "source material" in low or "source note" in low or "source identity" in low or "source metadata" in low or "source hash" in low or "source id" in low or "source reference" in low or "source category" in low or "source module" in low or "source workspace" in low or "source context" in low or "source memory" in low or "source tree" in low or "source-tree" in low or "source-root" in low or "source_root" in low or "providing the sources" in low or "source and target" in low or "source quality" in low or "source ledger" in low or "source evidence" in low or "proposal source" in low or "truth source" in low or "the source." in low or "report_feed" in low or "source summary schema" in low:
         return True, "generic source usage"
+    if "runtimeoutcomereport" in low:
+        return True, "compatibility API class name"
+    if "operation=\"signal\"" in low or "signal_latency_ms" in low or "signal latency" in low or "hygiene and safety signals" in low or "hygiene_and_safety_signals" in low:
+        return True, "structured metric/safety signal usage"
     return False, "unclassified"
 
 
