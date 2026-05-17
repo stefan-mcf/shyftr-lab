@@ -4,7 +4,7 @@ Date: 2026-05-18
 Repo: `/Users/stefan/ShyftR`
 Starting Phase 12 commit: `bf9edd9`
 Phase 12 commit: this changeset (`feat: complete phase 12 benchmark track`)
-Status: complete locally and committed; pending push/CI readback at closeout write time
+Status: complete, committed, pushed, and CI-green
 
 ## Completed scope
 
@@ -109,6 +109,15 @@ PASS
 ```
 
 All commands exited 0.
+
+GitHub CI readback:
+
+```text
+Run 26000763525 on `4f51454a49eec99e8e665a63e972d267c8bbe185`: success
+Jobs: quality-gates, python-smoke 3.11, python-smoke 3.12, console-build, smoke
+```
+
+A follow-up docs-only closeout status update was pushed after that green readback.
 
 ## Final report artifacts
 
