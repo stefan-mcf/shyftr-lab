@@ -134,3 +134,27 @@ Phase 12 extends the fixture-safe harness with standard-dataset mapping scaffold
 - `scripts/convert_longmemeval_standard_fixture.py` and `scripts/convert_beam_standard_fixture.py`: guarded conversion helpers with manifest sidecars and SHA-256 digests.
 
 Phase 12 reports separate fixture retrieval metrics, fixture answer-eval metrics, mapping readiness, skipped optional LLM judging, and claims not allowed. No full LongMemEval or BEAM performance claim is made.
+
+## Phase 13 local full-dataset readiness
+
+Phase 13 starts with private/local run readiness, not public result claims. The operator runbook is:
+
+```text
+docs/benchmarks/phase13-local-full-dataset-runbook.md
+```
+
+P13-0/P13-1 add the runbook plus dry-run runner controls for operator-provided local files:
+
+- `--limit-questions N`: bound a local validation run to the first N questions after fixture load.
+- `--isolate-per-case`: reset backend state and ingest only the matching case conversations before each question, intended for LongMemEval-style per-case haystacks.
+- `beam-standard` CLI routing for explicit local BEAM fixture paths.
+
+No dataset is downloaded by these controls. No public summary or full standard-dataset result claim is included in P13-0/P13-1.
+
+P13-2 adds optional LLM judge gating as explicit, skip-safe scaffolding:
+
+```text
+docs/benchmarks/phase13-optional-llm-judge-gating.md
+```
+
+The default provider is `none`: no SDK import, credential lookup, or network call. When explicitly enabled, optional LLM judging is supplementary to deterministic answer evaluation and records skipped status when credentials, endpoint, or optional dependency are unavailable.

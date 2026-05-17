@@ -9,6 +9,13 @@ from shyftr.benchmarks.fixture import resolve_benchmark_fixture
 from shyftr.benchmarks.runner import run_fixture_benchmark
 
 
+def _parse_positive_int(raw: str) -> int:
+    value = int(raw)
+    if value < 1:
+        raise argparse.ArgumentTypeError("value must be a positive integer")
+    return value
+
+
 def _parse_top_k_values(raw: str) -> list[int]:
     values: list[int] = []
     for part in str(raw).split(","):
@@ -27,7 +34,7 @@ def _parse_top_k_values(raw: str) -> list[int]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run the ShyftR fixture-safe memory benchmark harness with Phase 12 answer-eval support."
+        description="Run the ShyftR fixture-safe memory benchmark harness with Phase 13 local-run and optional judge controls."
     )
     parser.add_argument("--run-id", default="local-dev", help="Run identifier written into the report.")
     parser.add_argument(
@@ -50,7 +57,7 @@ def main() -> int:
     parser.add_argument(
         "--fixture",
         default="synthetic-mini",
-        choices=["synthetic-mini", "locomo-mini", "locomo-standard", "longmemeval-standard"],
+        choices=["synthetic-mini", "locomo-mini", "locomo-standard", "longmemeval-standard", "beam-standard"],
         help="Fixture selector (default: synthetic-mini).",
     )
     parser.add_argument(
@@ -61,10 +68,11 @@ def main() -> int:
     parser.add_argument(
         "--fixture-format",
         default="shyftr-fixture",
-        choices=["shyftr-fixture", "locomo-standard", "longmemeval-standard"],
+        choices=["shyftr-fixture", "locomo-standard", "longmemeval-standard", "beam-standard"],
         help=(
             "Format for --fixture-path. locomo-standard maps a local normalized LOCOMO-style JSON file; "
-            "longmemeval-standard maps a local normalized LongMemEval-style JSON file. No datasets are downloaded by default."
+            "longmemeval-standard maps a local normalized LongMemEval-style JSON file; "
+            "beam-standard maps a local normalized BEAM-style JSON file. No datasets are downloaded by default."
         ),
     )
 
@@ -91,6 +99,17 @@ def main() -> int:
         action="store_true",
         help="Reuse ok/skipped backend results from an existing matching report at --output.",
     )
+    parser.add_argument(
+        "--limit-questions",
+        type=_parse_positive_int,
+        default=None,
+        help="Limit the benchmark to the first N questions after fixture load (dry-run/local validation control).",
+    )
+    parser.add_argument(
+        "--isolate-per-case",
+        action="store_true",
+        help="Reset and ingest only the matching case conversations before each question; intended for LongMemEval-style local runs.",
+    )
 
     parser.add_argument(
         "--include-mem0-oss",
@@ -113,6 +132,28 @@ def main() -> int:
         default="deterministic-composite",
         choices=["deterministic-composite"],
         help="Runner-owned deterministic judge to use when --enable-answer-eval is set.",
+    )
+
+    parser.add_argument(
+        "--llm-judge-provider",
+        default="none",
+        choices=["none", "openai-compatible", "local-openai-compatible"],
+        help="Optional supplementary LLM judge provider. Defaults to none; no provider is inferred from ambient credentials.",
+    )
+    parser.add_argument("--llm-judge-model", default=None, help="Model name for the optional LLM judge when explicitly enabled.")
+    parser.add_argument("--llm-judge-base-url", default=None, help="Base URL for local/OpenAI-compatible optional judge endpoints.")
+    parser.add_argument("--llm-judge-api-key-env", default=None, help="Environment variable name containing the optional judge API key. Raw keys are not accepted.")
+    parser.add_argument("--llm-judge-api-key-file", default=None, help="File path containing the optional judge API key. The key is never serialized into reports.")
+    parser.add_argument(
+        "--llm-judge-max-retries",
+        type=_parse_positive_int,
+        default=1,
+        help="Maximum retry count for optional LLM judge calls when a provider is explicitly enabled.",
+    )
+    parser.add_argument(
+        "--llm-judge-output-jsonl",
+        default=None,
+        help="Optional raw LLM judge JSONL output path under artifacts/, reports/, or tmp/.",
     )
 
     args = parser.parse_args()
@@ -157,9 +198,18 @@ def main() -> int:
         timeout_seconds=int(args.timeout_seconds),
         max_retries=int(args.max_retries),
         resume_existing=bool(args.resume_existing),
+        limit_questions=args.limit_questions,
+        isolate_per_case=bool(args.isolate_per_case),
         enable_answer_eval=bool(args.enable_answer_eval),
         answerer_name=str(args.answerer),
         judge_name=str(args.judge),
+        llm_judge_provider=str(args.llm_judge_provider),
+        llm_judge_model=args.llm_judge_model,
+        llm_judge_base_url=args.llm_judge_base_url,
+        llm_judge_api_key_env=args.llm_judge_api_key_env,
+        llm_judge_api_key_file=args.llm_judge_api_key_file,
+        llm_judge_max_retries=int(args.llm_judge_max_retries),
+        llm_judge_output_jsonl=Path(args.llm_judge_output_jsonl) if args.llm_judge_output_jsonl else None,
     )
 
     return 0

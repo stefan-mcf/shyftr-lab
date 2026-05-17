@@ -149,3 +149,38 @@ When a backend cannot expose a metric, use `not_supported` rather than inventing
 ## Phase 12 fields
 
 Backend `metrics` may include `answer_eval` with `enabled`, `answerer`, `judge`, `correctness`, `token_f1`, `abstention_rate`, `correct_abstention_rate`, `missed_answer_rate`, `unsupported_answer_rate`, `by_question_type`, and per-question result rows. Retrieval metrics now include `ndcg_at_k`, `answer_support_coverage`, and explicit `not_supported` values for conflict/stale retrieval rates when fixture labels do not support those controls.
+
+## Phase 13 P13-1 fields
+
+Phase 13 local-run readiness adds bounded dry-run and per-case reset disclosures:
+
+- `fairness.limit_questions`: integer limit when the runner intentionally evaluates only the first N questions; otherwise null.
+- `fairness.original_question_count`: question count before applying `limit_questions`.
+- `fairness.limited_question_count`: question count actually evaluated.
+- `fairness.isolate_per_case`: whether the runner reset backend state before each evaluated question and ingested only matching case conversations.
+- `fairness.case_group_metadata_key`: metadata key used for per-case grouping when `isolate_per_case` is enabled.
+- backend `ingest.reset_count`: runner-observed reset operations for the backend.
+- backend `ingest.operation_count`: runner-observed ingest operations for the backend.
+- backend `ingest.isolate_per_case`: backend-level copy of the reset mode.
+- backend `search.operation_count`: runner-observed search operations for the backend.
+
+These fields support private/local dry-run validation. They do not imply a full LongMemEval, BEAM, or LOCOMO standard-dataset result.
+
+## Phase 13 P13-2 fields
+
+Backend `metrics` may include `llm_judge` only when an optional provider is explicitly requested. Deterministic `answer_eval` remains primary.
+
+`metrics.llm_judge` includes:
+
+- `enabled`: true when optional judging was requested;
+- `status`: `ok` or `skipped`;
+- `skip_reason`: structured reason when skipped;
+- `config`: public-safe provider/model/key-location disclosure with no raw key values;
+- `prompt_template_version` and `prompt_template_sha256`;
+- `temperature`: fixed at `0.0`;
+- `question_count`;
+- `agreement_rate`: deterministic-vs-LLM agreement when optional judging returns labels;
+- `results`: per-question optional verdicts and deterministic verdicts;
+- `usage_summary`: token counts or estimates and cost estimate `unknown` unless future configured pricing exists.
+
+`models.llm_judge` mirrors the public-safe optional judge configuration. Raw JSONL judge output, when requested, must be under `artifacts/`, `reports/`, or `tmp/` and is not committed by default.

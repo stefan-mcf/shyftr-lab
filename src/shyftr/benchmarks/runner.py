@@ -16,8 +16,9 @@ from shyftr.benchmarks.adapters.base import AdapterSkip, BackendAdapter
 from shyftr.benchmarks.answerer import build_answerer
 from shyftr.benchmarks.fixture import BenchmarkFixture
 from shyftr.benchmarks.judge import build_judge
+from shyftr.benchmarks.llm_judge import LLMJudgeConfig, evaluate_optional_llm_judge
 from shyftr.benchmarks.report import BackendResult, BenchmarkReport, REPORT_SCHEMA_VERSION, utc_now_iso
-from shyftr.benchmarks.types import RetrievalItem, SearchOutput
+from shyftr.benchmarks.types import BenchmarkConversation, BenchmarkQuestion, RetrievalItem, SearchOutput
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,11 @@ class HarnessFairnessConfig:
     answerer_owned_by_runner: bool = True
     judge_owned_by_runner: bool = True
     backend_answering_enabled: bool = False
+    limit_questions: Optional[int] = None
+    original_question_count: Optional[int] = None
+    limited_question_count: Optional[int] = None
+    isolate_per_case: bool = False
+    case_group_metadata_key: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -39,6 +45,11 @@ class HarnessFairnessConfig:
             "answerer_owned_by_runner": bool(self.answerer_owned_by_runner),
             "judge_owned_by_runner": bool(self.judge_owned_by_runner),
             "backend_answering_enabled": bool(self.backend_answering_enabled),
+            "limit_questions": self.limit_questions,
+            "original_question_count": self.original_question_count,
+            "limited_question_count": self.limited_question_count,
+            "isolate_per_case": bool(self.isolate_per_case),
+            "case_group_metadata_key": self.case_group_metadata_key,
         }
 
 
@@ -324,7 +335,7 @@ def _aggregate_backend_summaries(backend_results: Sequence[BackendResult], *, ti
             "backends": retry_events_by_backend,
             "backend_count_with_retry_events": sum(1 for summary in retry_events_by_backend.values() if summary.get("event_count", 0)),
         },
-        "note": "Aggregate metrics remain fixture-level and claim-limited in Phase 11.",
+        "note": "Aggregate metrics remain fixture/local-run level and claim-limited.",
     }
 
 
@@ -362,6 +373,77 @@ def _compute_control_audit(items: Iterable[RetrievalItem]) -> Dict[str, Any]:
     }
 
 
+
+
+def _limited_fixture(fixture: BenchmarkFixture, *, limit_questions: Optional[int]) -> BenchmarkFixture:
+    if limit_questions is None:
+        return fixture
+    limit = int(limit_questions)
+    if limit < 1:
+        raise ValueError("limit_questions must be a positive integer")
+    limited_questions = list(fixture.questions[:limit])
+    return BenchmarkFixture(
+        schema_version=fixture.schema_version,
+        fixture_id=fixture.fixture_id,
+        dataset_name=fixture.dataset_name,
+        dataset_version=fixture.dataset_version,
+        contains_private_data=fixture.contains_private_data,
+        conversations=list(fixture.conversations),
+        questions=limited_questions,
+    )
+
+
+def _question_case_group(question: BenchmarkQuestion) -> Optional[str]:
+    notes = question.evaluation_notes or ""
+    if notes:
+        try:
+            parsed = json.loads(notes)
+            if isinstance(parsed, dict):
+                for key in ("isolation_group", "longmemeval_case_id", "beam_case_id", "case_id"):
+                    value = parsed.get(key)
+                    if value:
+                        return str(value)
+        except Exception:
+            pass
+        for part in str(notes).replace(";", " ").split():
+            if part.startswith("isolation_group="):
+                value = part.split("=", 1)[1].strip().strip(",")
+                if value:
+                    return value
+            if part.startswith("longmemeval_case_id="):
+                value = part.split("=", 1)[1].strip().strip(",")
+                if value:
+                    return value
+    return None
+
+
+def _conversation_case_group(conversation: BenchmarkConversation) -> Optional[str]:
+    metadata = dict(conversation.metadata or {})
+    for key in ("isolation_group", "longmemeval_case_id", "beam_case_id", "case_id"):
+        value = metadata.get(key)
+        if value:
+            return str(value)
+    for message in conversation.messages:
+        message_metadata = dict(message.metadata or {})
+        for key in ("isolation_group", "longmemeval_case_id", "beam_case_id", "case_id"):
+            value = message_metadata.get(key)
+            if value:
+                return str(value)
+    return None
+
+
+def _conversations_for_question(question: BenchmarkQuestion, conversations: Sequence[BenchmarkConversation]) -> List[BenchmarkConversation]:
+    group = _question_case_group(question)
+    if not group:
+        raise ValueError(
+            f"isolate_per_case requires case grouping metadata for question {question.question_id!r}"
+        )
+    matching = [conv for conv in conversations if _conversation_case_group(conv) == group]
+    if not matching:
+        raise ValueError(
+            f"isolate_per_case found no conversations for question {question.question_id!r} group {group!r}"
+        )
+    return matching
 
 def _compute_answer_eval(
     *,
@@ -434,23 +516,38 @@ def run_fixture_benchmark(
     top_k_values: Sequence[int] = (10,),
     include_retrieval_details: bool = True,
     runner_name: str = "run_memory_benchmark.py",
-    runner_version: str = "phase11-p11-4c",
+    runner_version: str = "phase13-p13-2",
     command_argv: Optional[List[str]] = None,
     timeout_seconds: int = 60,
     max_retries: int = 0,
     resume_existing: bool = False,
+    limit_questions: Optional[int] = None,
+    isolate_per_case: bool = False,
     enable_answer_eval: bool = False,
     answerer_name: str = "deterministic-extractive",
     judge_name: str = "deterministic-composite",
+    llm_judge_provider: str = "none",
+    llm_judge_model: Optional[str] = None,
+    llm_judge_base_url: Optional[str] = None,
+    llm_judge_api_key_env: Optional[str] = None,
+    llm_judge_api_key_file: Optional[str] = None,
+    llm_judge_max_retries: int = 0,
+    llm_judge_output_jsonl: Optional[Path] = None,
 ) -> BenchmarkReport:
     normalized_top_k_values = _normalize_top_k_values(top_k_values)
     max_top_k = max(normalized_top_k_values)
+    effective_fixture = _limited_fixture(fixture, limit_questions=limit_questions)
     fairness = HarnessFairnessConfig(
         top_k_values=list(normalized_top_k_values),
         timeout_seconds=int(timeout_seconds),
         max_retries=int(max_retries),
         answerer_owned_by_runner=bool(enable_answer_eval),
         judge_owned_by_runner=bool(enable_answer_eval),
+        limit_questions=int(limit_questions) if limit_questions is not None else None,
+        original_question_count=len(fixture.questions),
+        limited_question_count=len(effective_fixture.questions),
+        isolate_per_case=bool(isolate_per_case),
+        case_group_metadata_key="isolation_group" if isolate_per_case else None,
     ).to_dict()
 
     # Runner metadata must be public-safe.
@@ -471,15 +568,25 @@ def run_fixture_benchmark(
         "name": fixture.dataset_name,
         "version": fixture.dataset_version,
         "split": fixture.fixture_id,
-        "conversation_count": len(fixture.conversations),
-        "question_count": len(fixture.questions),
+        "conversation_count": len(effective_fixture.conversations),
+        "question_count": len(effective_fixture.questions),
         "fixture_path": None,
         "contains_private_data": bool(fixture.contains_private_data),
     }
 
+    llm_judge_config = LLMJudgeConfig(
+        provider=str(llm_judge_provider or "none"),
+        model=llm_judge_model,
+        base_url=llm_judge_base_url,
+        api_key_env=llm_judge_api_key_env,
+        api_key_file=llm_judge_api_key_file,
+        max_retries=int(llm_judge_max_retries),
+        output_jsonl=llm_judge_output_jsonl,
+    )
     models = {
         "answerer": {"name": str(answerer_name) if enable_answer_eval else "runner-owned-disabled", "version": "phase12-v0" if enable_answer_eval else None},
         "judge": {"name": str(judge_name) if enable_answer_eval else "runner-owned-disabled", "version": "phase12-v0" if enable_answer_eval else None},
+        "llm_judge": llm_judge_config.public_summary(),
         "embedding": {"name": "backend-owned", "version": None},
     }
 
@@ -493,7 +600,7 @@ def run_fixture_benchmark(
         models=models,
         limitations=[
             "Phase 11 fixtures are tiny and public-safe; not a full LOCOMO/LongMemEval/BEAM run.",
-            "Answerer/judge are runner-owned and deterministic when enabled; no external LLM calls are made.",
+            "Answerer/judge are runner-owned and deterministic when enabled; optional LLM judging is disabled unless explicitly requested.",
             "No broad performance or task-success claims are supported by these fixture runs.",
         ],
         claims_allowed=[
@@ -506,11 +613,11 @@ def run_fixture_benchmark(
     )
 
     safe_path = _safe_write_path(output_path, repo_root=repo_root)
-    resumable_results = _load_resumable_backend_results(safe_path, run_id=run_id, fixture=fixture) if resume_existing else {}
+    resumable_results = _load_resumable_backend_results(safe_path, run_id=run_id, fixture=effective_fixture) if resume_existing else {}
     resumed_backend_names: List[str] = []
 
     expected_map: Dict[str, List[str]] = {}
-    for q in fixture.questions:
+    for q in effective_fixture.questions:
         if q.expected_item_ids:
             expected_map[q.question_id] = list(q.expected_item_ids)
 
@@ -526,41 +633,86 @@ def run_fixture_benchmark(
         all_items: List[RetrievalItem] = []
         retry_events: List[Dict[str, Any]] = []
         try:
-            _run_with_retries(
-                lambda: adapter.reset_run(run_id),
-                timeout_seconds=int(timeout_seconds),
-                max_retries=int(max_retries),
-                backend_name=backend_name,
-                operation="reset_run",
-                retry_events=retry_events,
-            )
-
-            for conv in fixture.conversations:
-                _run_with_retries(
-                    lambda conv=conv: adapter.ingest_conversation(conv),
-                    timeout_seconds=int(timeout_seconds),
-                    max_retries=int(max_retries),
-                    backend_name=backend_name,
-                    operation=f"ingest:{conv.conversation_id}",
-                    retry_events=retry_events,
-                )
-
-            # Search each question once at the largest requested k, then compute
-            # metrics at every configured cutoff from the same ranked list. This
-            # keeps adapter calls fair while enabling LOCOMO/LongMemEval-style
-            # multi-cutoff reporting.
             top_k = int(max_top_k)
-            for q in fixture.questions:
-                out = _run_with_retries(
-                    lambda q=q: adapter.search(query_id=q.question_id, query=q.query, top_k=top_k),
+            reset_count = 0
+            ingest_count = 0
+            search_count = 0
+
+            if isolate_per_case:
+                # LongMemEval-style standard datasets provide per-question case
+                # groups. For those runs, reset and ingest only that question's
+                # haystack before search so earlier questions cannot leak into
+                # later questions.
+                for q in effective_fixture.questions:
+                    question_run_id = f"{run_id}:{q.question_id}"
+                    _run_with_retries(
+                        lambda question_run_id=question_run_id: adapter.reset_run(question_run_id),
+                        timeout_seconds=int(timeout_seconds),
+                        max_retries=int(max_retries),
+                        backend_name=backend_name,
+                        operation=f"reset_run:{q.question_id}",
+                        retry_events=retry_events,
+                    )
+                    reset_count += 1
+                    case_conversations = _conversations_for_question(q, effective_fixture.conversations)
+                    for conv in case_conversations:
+                        _run_with_retries(
+                            lambda conv=conv: adapter.ingest_conversation(conv),
+                            timeout_seconds=int(timeout_seconds),
+                            max_retries=int(max_retries),
+                            backend_name=backend_name,
+                            operation=f"ingest:{q.question_id}:{conv.conversation_id}",
+                            retry_events=retry_events,
+                        )
+                        ingest_count += 1
+                    out = _run_with_retries(
+                        lambda q=q: adapter.search(query_id=q.question_id, query=q.query, top_k=top_k),
+                        timeout_seconds=int(timeout_seconds),
+                        max_retries=int(max_retries),
+                        backend_name=backend_name,
+                        operation=f"search:{q.question_id}",
+                        retry_events=retry_events,
+                    )
+                    search_count += 1
+                    search_outputs.append(out)
+                    all_items.extend(out.items)
+            else:
+                _run_with_retries(
+                    lambda: adapter.reset_run(run_id),
                     timeout_seconds=int(timeout_seconds),
                     max_retries=int(max_retries),
                     backend_name=backend_name,
-                    operation=f"search:{q.question_id}",
+                    operation="reset_run",
                     retry_events=retry_events,
                 )
-                search_outputs.append(out)
-                all_items.extend(out.items)
+                reset_count += 1
+
+                for conv in effective_fixture.conversations:
+                    _run_with_retries(
+                        lambda conv=conv: adapter.ingest_conversation(conv),
+                        timeout_seconds=int(timeout_seconds),
+                        max_retries=int(max_retries),
+                        backend_name=backend_name,
+                        operation=f"ingest:{conv.conversation_id}",
+                        retry_events=retry_events,
+                    )
+                    ingest_count += 1
+                # Search each question once at the largest requested k, then compute
+                # metrics at every configured cutoff from the same ranked list. This
+                # keeps adapter calls fair while enabling LOCOMO/LongMemEval-style
+                # multi-cutoff reporting.
+                for q in effective_fixture.questions:
+                    out = _run_with_retries(
+                        lambda q=q: adapter.search(query_id=q.question_id, query=q.query, top_k=top_k),
+                        timeout_seconds=int(timeout_seconds),
+                        max_retries=int(max_retries),
+                        backend_name=backend_name,
+                        operation=f"search:{q.question_id}",
+                        retry_events=retry_events,
+                    )
+                    search_count += 1
+                    search_outputs.append(out)
+                    all_items.extend(out.items)
 
             retrieval_by_k = _metrics_by_k(search_outputs, expected_map, top_k_values=normalized_top_k_values)
             metrics = {
@@ -569,13 +721,21 @@ def run_fixture_benchmark(
             }
             if enable_answer_eval:
                 metrics["answer_eval"] = _compute_answer_eval(
-                    fixture=fixture,
+                    fixture=effective_fixture,
                     search_outputs=search_outputs,
                     answerer_name=answerer_name,
                     judge_name=judge_name,
                 )
             else:
                 metrics["answer_eval"] = {"enabled": False, "reason": "enable_answer_eval flag not set"}
+            llm_judge_metrics = evaluate_optional_llm_judge(
+                config=llm_judge_config,
+                fixture_questions=effective_fixture.questions,
+                deterministic_answer_eval=metrics["answer_eval"],
+                repo_root=repo_root,
+            )
+            if llm_judge_metrics is not None:
+                metrics["llm_judge"] = llm_judge_metrics
             control_audit = _compute_control_audit(all_items)
             raw_cost_latency = adapter.export_cost_latency_stats()
             backend_wall_ms = (time.perf_counter() - started_backend) * 1000.0
@@ -588,9 +748,15 @@ def run_fixture_benchmark(
                 status="ok",
                 status_reason=None,
                 config_summary={"backend_name": backend_name},
-                ingest={"conversation_count": len(fixture.conversations)},
+                ingest={
+                    "conversation_count": len(effective_fixture.conversations),
+                    "operation_count": ingest_count,
+                    "reset_count": reset_count,
+                    "isolate_per_case": bool(isolate_per_case),
+                },
                 search={
-                    "question_count": len(fixture.questions),
+                    "question_count": len(effective_fixture.questions),
+                    "operation_count": search_count,
                     "top_k": top_k,
                     "top_k_values": list(normalized_top_k_values),
                     "latency_ms": [o.latency_ms for o in search_outputs],

@@ -148,3 +148,19 @@ The first implementation target is a tiny fixture-safe adapter harness that comp
 ## Phase 12 answer-eval method
 
 Answer evaluation is runner-owned and deterministic by default. Backends retrieve items only; the runner applies the selected answerer and judge above the same retrieved item list. This keeps backend comparison scoped to retrieval and prevents backend-owned generation from changing the benchmark contract. Optional LLM judging is design-gated and skipped unless a future explicit run enables it.
+
+## Phase 13 local-run controls
+
+For operator-provided local standard-dataset files, use a bounded dry run before any private full run:
+
+```text
+load local fixture -> optionally limit questions -> optionally reset per case -> ingest -> search -> deterministic answer/judge -> report
+```
+
+`--limit-questions` is a dry-run guard. `--isolate-per-case` is required for LongMemEval-style per-question haystacks unless a future experiment explicitly declares shared warm memory. Reports must disclose both controls and must not turn a bounded validation run into a full standard-dataset claim.
+
+## Phase 13 optional LLM judge method
+
+Optional LLM judging is supplementary and disabled by default. The deterministic answerer and deterministic composite judge run first when answer evaluation is enabled. Only after that primary result exists may an explicitly configured optional provider add `metrics.llm_judge`.
+
+Provider configuration is never inferred from ambient credentials. Missing model, endpoint, key, or optional dependency is reported as a structured skip. Temperature is fixed at `0.0`, prompt template version and hash are recorded, raw JSONL output is guarded to local artifact directories, and cost is `unknown` unless a future explicit pricing table is configured.
