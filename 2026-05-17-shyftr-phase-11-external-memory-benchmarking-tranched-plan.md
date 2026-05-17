@@ -3,7 +3,7 @@
 Date: 2026-05-17
 Repo: `/Users/stefan/ShyftR`
 Baseline HEAD: `88a1871313705d41f4b3cbb055fe46f83cd10e00`
-Status: P11-1 implemented locally; P11-2 mem0 OSS compatibility is next
+Status: Phase 11 complete end-to-end with fixture-safe benchmark runs, optional comparator support, local standard-dataset mapping/conversion scaffolds, and final HTML closeout.
 
 ## Purpose
 
@@ -230,6 +230,23 @@ After the mapping layer, add an operator-triggered conversion helper:
 - public-safe output requires `contains_private_data: false` plus `--public-output`.
 
 This tranche remains a local conversion utility, not a full LOCOMO run.
+
+### P11-final: Closeout dossier and benchmark report
+
+Deliverables:
+
+- final fixture reports for synthetic-mini and LOCOMO-mini under `reports/benchmarks/`;
+- `scripts/phase11_final_benchmark_report.py` renderer;
+- `docs/benchmarks/phase11-final-benchmark-report.json` machine-readable closeout summary;
+- `docs/benchmarks/phase11-final-benchmark-report.html` polished HTML report;
+- final Phase 11 closeout markdown.
+
+Done means:
+
+- every Phase 11 tranche has a concrete delivered surface;
+- measured fixture results and not-measured standard-dataset targets are visually separated;
+- claim limits are present in JSON and HTML;
+- full verification and CI pass.
 
 ### P11-4: Larger benchmark expansion
 

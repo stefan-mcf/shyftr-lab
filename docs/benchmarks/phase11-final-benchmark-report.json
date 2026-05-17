@@ -1,0 +1,149 @@
+{
+  "backend_rows": [
+    {
+      "backend": "shyftr",
+      "dataset": "synthetic-mini",
+      "mrr": 1.0,
+      "precision_at_k": 0.4444444444444444,
+      "provenance_coverage": 1.0,
+      "recall_at_k": 1.0,
+      "status": "ok"
+    },
+    {
+      "backend": "no-memory",
+      "dataset": "synthetic-mini",
+      "mrr": 0.0,
+      "precision_at_k": 0.0,
+      "provenance_coverage": 0.0,
+      "recall_at_k": 0.0,
+      "status": "ok"
+    },
+    {
+      "backend": "mem0-oss",
+      "dataset": "synthetic-mini",
+      "mrr": "not_run",
+      "precision_at_k": "not_run",
+      "provenance_coverage": "not_supported",
+      "recall_at_k": "not_run",
+      "status": "skipped"
+    },
+    {
+      "backend": "shyftr",
+      "dataset": "locomo-mini",
+      "mrr": 0.8333333333333334,
+      "precision_at_k": 0.20000000000000004,
+      "provenance_coverage": 1.0,
+      "recall_at_k": 1.0,
+      "status": "ok"
+    },
+    {
+      "backend": "no-memory",
+      "dataset": "locomo-mini",
+      "mrr": 0.0,
+      "precision_at_k": 0.0,
+      "provenance_coverage": 0.0,
+      "recall_at_k": 0.0,
+      "status": "ok"
+    },
+    {
+      "backend": "mem0-oss",
+      "dataset": "locomo-mini",
+      "mrr": "not_run",
+      "precision_at_k": "not_run",
+      "provenance_coverage": "not_supported",
+      "recall_at_k": "not_run",
+      "status": "skipped"
+    }
+  ],
+  "claims_allowed": [
+    "Phase 11 provides a reproducible, public-safe external-memory benchmark track.",
+    "Synthetic-mini and LOCOMO-mini fixture reports can compare ShyftR, no-memory, and optional mem0 OSS under one runner contract.",
+    "LOCOMO-standard support is local-path, private-by-default mapping/conversion scaffolding unless an operator supplies a public-safe local file and run report.",
+    "Reports disclose top-k values, timeout/retry/resume controls, cost/latency summaries, limitations, and claim boundaries."
+  ],
+  "claims_not_allowed": [
+    "No broad ShyftR superiority claim is supported by Phase 11 fixture runs.",
+    "No full LOCOMO, LongMemEval, or BEAM result is claimed unless a separate local run report is supplied and reviewed.",
+    "No hosted-service, production-managed-memory, or private-core ranking claim is made.",
+    "No runner-owned answer-quality result is claimed beyond retrieval/control metrics currently implemented."
+  ],
+  "datasets": [
+    {
+      "claim": "Fixture-level retrieval/control behavior only",
+      "name": "synthetic-mini",
+      "scope": "Contract and adapter smoke benchmark",
+      "status": "measured fixture"
+    },
+    {
+      "claim": "Loader/report/claim-path validation only",
+      "name": "locomo-mini",
+      "scope": "Tiny LOCOMO-shaped public-safe run",
+      "status": "measured fixture"
+    },
+    {
+      "claim": "Mapping and guarded conversion readiness only unless a local run report is supplied",
+      "name": "locomo-standard",
+      "scope": "Operator-provided normalized local files",
+      "status": "local mapping + conversion scaffold"
+    },
+    {
+      "claim": "Not measured in Phase 11 closeout",
+      "name": "LongMemEval",
+      "scope": "Future local subset mapping",
+      "status": "methodology target"
+    },
+    {
+      "claim": "Not measured in Phase 11 closeout",
+      "name": "BEAM",
+      "scope": "Future large-scale retrieval once local costs are controlled",
+      "status": "methodology target"
+    }
+  ],
+  "generated_at": "2026-05-17T10:11:08.046454Z",
+  "git_sha": "49bc740ed6cd065784a265f015823e83f9e7c2f8",
+  "phase_status": "complete_with_claim_limits",
+  "report_count": 2,
+  "schema_version": "shyftr-phase11-final-benchmark-closeout/v0",
+  "tranches": [
+    {
+      "id": "P11-0",
+      "summary": "Methodology, adapter contract, fixture/report schemas"
+    },
+    {
+      "id": "P11-1",
+      "summary": "Fixture-safe runner, ShyftR/no-memory baseline, output guards"
+    },
+    {
+      "id": "P11-2",
+      "summary": "Optional mem0 OSS comparator with skipped status when unavailable"
+    },
+    {
+      "id": "P11-3",
+      "summary": "LOCOMO-mini fixture and public-safe report path"
+    },
+    {
+      "id": "P11-4a",
+      "summary": "Multi-top-k metrics and cost/timeout summaries"
+    },
+    {
+      "id": "P11-4b",
+      "summary": "Operation timeout and resume controls"
+    },
+    {
+      "id": "P11-4c",
+      "summary": "Deterministic retry execution and retry accounting"
+    },
+    {
+      "id": "P11-4d",
+      "summary": "LOCOMO-standard local mapping scaffold"
+    },
+    {
+      "id": "P11-4e",
+      "summary": "LOCOMO local conversion helper and manifest sidecar"
+    },
+    {
+      "id": "P11-final",
+      "summary": "Closing report and polished HTML benchmark dossier"
+    }
+  ]
+}

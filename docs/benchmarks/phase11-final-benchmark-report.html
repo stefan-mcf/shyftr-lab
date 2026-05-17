@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShyftR Phase 11 Benchmark Closeout</title>
+<style>
+:root {
+  --ink: #10211d;
+  --paper: #f3efe3;
+  --panel: #fff9e9;
+  --rule: #24352f;
+  --brass: #c58a2c;
+  --oxide: #5e7f74;
+  --accent: #e45232;
+  --shadow: 0 22px 60px rgba(16, 33, 29, .18);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 12%, rgba(197,138,44,.22), transparent 26rem),
+    radial-gradient(circle at 92% 4%, rgba(94,127,116,.25), transparent 24rem),
+    linear-gradient(135deg, #eee5cf 0%, #f8f3e6 50%, #dfd3bb 100%);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .22;
+  background-image: linear-gradient(90deg, rgba(16,33,29,.08) 1px, transparent 1px), linear-gradient(rgba(16,33,29,.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+main { width: min(1180px, calc(100vw - 40px)); margin: 0 auto; padding: 56px 0 80px; }
+.hero {
+  position: relative;
+  padding: 46px;
+  border: 2px solid var(--rule);
+  background: rgba(255,249,233,.9);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.hero::after {
+  content: 'PHASE 11';
+  position: absolute;
+  right: -16px;
+  bottom: -32px;
+  font-size: clamp(64px, 14vw, 180px);
+  font-weight: 900;
+  line-height: .8;
+  color: rgba(197,138,44,.18);
+  letter-spacing: -.08em;
+}
+.kicker { font: 700 13px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+h1 { margin: 16px 0 10px; max-width: 860px; font-size: clamp(44px, 7vw, 92px); line-height: .86; letter-spacing: -.055em; }
+.lede { max-width: 760px; font-size: 20px; line-height: 1.55; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 34px; }
+.metric { border: 1px solid var(--rule); background: #f8f0d8; padding: 18px; }
+.metric strong { display: block; font: 800 36px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.metric span { display: block; margin-top: 8px; font: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .11em; text-transform: uppercase; color: var(--oxide); }
+section { margin-top: 28px; padding: 30px; border: 1px solid rgba(16,33,29,.65); background: rgba(255,249,233,.76); }
+h2 { margin: 0 0 18px; font-size: 34px; letter-spacing: -.03em; }
+.dataset-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.dataset-card { min-height: 220px; padding: 18px; border: 1px solid var(--rule); background: linear-gradient(180deg, #fff8e8, #eee1c9); display: flex; flex-direction: column; }
+.dataset-card h3 { margin: 10px 0; font-size: 24px; letter-spacing: -.035em; }
+.dataset-card p { flex: 1; line-height: 1.35; }
+.dataset-card span { font-size: 13px; color: var(--oxide); }
+.eyebrow { font: 800 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+table { width: 100%; border-collapse: collapse; overflow: hidden; }
+th, td { padding: 12px 10px; border-bottom: 1px solid rgba(16,33,29,.25); text-align: left; vertical-align: top; }
+th { font: 800 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--oxide); }
+.claims { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.claim-box { border: 1px solid var(--rule); padding: 20px; background: #f9efd5; }
+.claim-box.blocked { background: #f7dfd2; }
+li { margin: 8px 0; line-height: 1.45; }
+.footer { margin-top: 20px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgba(16,33,29,.72); }
+@media (max-width: 900px) { .metrics, .dataset-grid, .claims { grid-template-columns: 1fr; } .hero { padding: 30px; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="kicker">External memory benchmarking closeout</div>
+    <h1>Governed memory, measured without myth.</h1>
+    <p class="lede">Phase 11 closes with a reproducible benchmark track: fixture-safe runs, optional comparator adapters, LOCOMO-style local mapping, guarded conversion, run controls, and explicit claim limits.</p>
+    <div class="metrics">
+      <div class="metric"><strong>10</strong><span>tranches closed</span></div>
+      <div class="metric"><strong>2</strong><span>fixture reports rendered</span></div>
+      <div class="metric"><strong>4</strong><span>backend runs ok</span></div>
+      <div class="metric"><strong>2/0</strong><span>skipped / failed</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Benchmark coverage map</h2>
+    <div class="dataset-grid">
+        <article class="dataset-card">
+          <div class="eyebrow">measured fixture</div>
+          <h3>synthetic-mini</h3>
+          <p>Contract and adapter smoke benchmark</p>
+          <span>Fixture-level retrieval/control behavior only</span>
+        </article>
+
+
+        <article class="dataset-card">
+          <div class="eyebrow">measured fixture</div>
+          <h3>locomo-mini</h3>
+          <p>Tiny LOCOMO-shaped public-safe run</p>
+          <span>Loader/report/claim-path validation only</span>
+        </article>
+
+
+        <article class="dataset-card">
+          <div class="eyebrow">local mapping + conversion scaffold</div>
+          <h3>locomo-standard</h3>
+          <p>Operator-provided normalized local files</p>
+          <span>Mapping and guarded conversion readiness only unless a local run report is supplied</span>
+        </article>
+
+
+        <article class="dataset-card">
+          <div class="eyebrow">methodology target</div>
+          <h3>LongMemEval</h3>
+          <p>Future local subset mapping</p>
+          <span>Not measured in Phase 11 closeout</span>
+        </article>
+
+
+        <article class="dataset-card">
+          <div class="eyebrow">methodology target</div>
+          <h3>BEAM</h3>
+          <p>Future large-scale retrieval once local costs are controlled</p>
+          <span>Not measured in Phase 11 closeout</span>
+        </article>
+        </div>
+  </section>
+
+  <section>
+    <h2>Measured fixture backend results</h2>
+    <table><thead><tr><th>Dataset</th><th>Backend</th><th>Status</th><th>Recall</th><th>Precision</th><th>MRR</th><th>Provenance</th></tr></thead><tbody><tr><td>synthetic-mini</td><td>shyftr</td><td>ok</td><td>1.000</td><td>0.444</td><td>1.000</td><td>1.000</td></tr>
+<tr><td>synthetic-mini</td><td>no-memory</td><td>ok</td><td>0.000</td><td>0.000</td><td>0.000</td><td>0.000</td></tr>
+<tr><td>synthetic-mini</td><td>mem0-oss</td><td>skipped</td><td>not_run</td><td>not_run</td><td>not_run</td><td>not_supported</td></tr>
+<tr><td>locomo-mini</td><td>shyftr</td><td>ok</td><td>1.000</td><td>0.200</td><td>0.833</td><td>1.000</td></tr>
+<tr><td>locomo-mini</td><td>no-memory</td><td>ok</td><td>0.000</td><td>0.000</td><td>0.000</td><td>0.000</td></tr>
+<tr><td>locomo-mini</td><td>mem0-oss</td><td>skipped</td><td>not_run</td><td>not_run</td><td>not_run</td><td>not_supported</td></tr></tbody></table>
+  </section>
+
+  <section>
+    <h2>Phase 11 tranche ledger</h2>
+    <table><thead><tr><th>Tranche</th><th>Delivered surface</th><th>Status</th></tr></thead><tbody><tr><td>P11-0</td><td>Methodology, adapter contract, fixture/report schemas</td><td><b>Complete</b></td></tr>
+<tr><td>P11-1</td><td>Fixture-safe runner, ShyftR/no-memory baseline, output guards</td><td><b>Complete</b></td></tr>
+<tr><td>P11-2</td><td>Optional mem0 OSS comparator with skipped status when unavailable</td><td><b>Complete</b></td></tr>
+<tr><td>P11-3</td><td>LOCOMO-mini fixture and public-safe report path</td><td><b>Complete</b></td></tr>
+<tr><td>P11-4a</td><td>Multi-top-k metrics and cost/timeout summaries</td><td><b>Complete</b></td></tr>
+<tr><td>P11-4b</td><td>Operation timeout and resume controls</td><td><b>Complete</b></td></tr>
+<tr><td>P11-4c</td><td>Deterministic retry execution and retry accounting</td><td><b>Complete</b></td></tr>
+<tr><td>P11-4d</td><td>LOCOMO-standard local mapping scaffold</td><td><b>Complete</b></td></tr>
+<tr><td>P11-4e</td><td>LOCOMO local conversion helper and manifest sidecar</td><td><b>Complete</b></td></tr>
+<tr><td>P11-final</td><td>Closing report and polished HTML benchmark dossier</td><td><b>Complete</b></td></tr></tbody></table>
+  </section>
+
+  <section>
+    <h2>Claim discipline</h2>
+    <div class="claims">
+      <div class="claim-box"><div class="eyebrow">Allowed</div><ul><li>Phase 11 provides a reproducible, public-safe external-memory benchmark track.</li>
+<li>Synthetic-mini and LOCOMO-mini fixture reports can compare ShyftR, no-memory, and optional mem0 OSS under one runner contract.</li>
+<li>LOCOMO-standard support is local-path, private-by-default mapping/conversion scaffolding unless an operator supplies a public-safe local file and run report.</li>
+<li>Reports disclose top-k values, timeout/retry/resume controls, cost/latency summaries, limitations, and claim boundaries.</li></ul></div>
+      <div class="claim-box blocked"><div class="eyebrow">Not allowed</div><ul><li>No broad ShyftR superiority claim is supported by Phase 11 fixture runs.</li>
+<li>No full LOCOMO, LongMemEval, or BEAM result is claimed unless a separate local run report is supplied and reviewed.</li>
+<li>No hosted-service, production-managed-memory, or private-core ranking claim is made.</li>
+<li>No runner-owned answer-quality result is claimed beyond retrieval/control metrics currently implemented.</li></ul></div>
+    </div>
+  </section>
+
+  <p class="footer">Generated at 2026-05-17T10:11:08.046454Z from git 49bc740ed6cd065784a265f015823e83f9e7c2f8. This HTML is a closeout dossier, not a broad public performance claim.</p>
+</main>
+</body>
+</html>

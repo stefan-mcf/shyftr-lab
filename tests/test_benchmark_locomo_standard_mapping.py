@@ -107,6 +107,12 @@ def test_converter_writes_guarded_public_fixture(tmp_path: Path) -> None:
     assert payload["dataset_name"] == "locomo-standard"
     assert payload["contains_private_data"] is False
     assert payload["questions"][0]["expected_item_ids"] == ["turn-1"]
+    manifest = json.loads(output_path.with_suffix(output_path.suffix + ".manifest.json").read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == "shyftr-memory-benchmark-conversion-manifest/v0"
+    assert manifest["output_sha256"]
+    assert manifest["dataset_name"] == "locomo-standard"
+    assert manifest["conversation_count"] == 1
+    assert manifest["question_count"] == 1
 
 
 def test_converter_rejects_private_input_without_override(tmp_path: Path) -> None:

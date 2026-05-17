@@ -3,13 +3,13 @@
 Date: 2026-05-17
 Repo: `/Users/stefan/ShyftR`
 Baseline HEAD: `88a1871313705d41f4b3cbb055fe46f83cd10e00`
-Status: P11-1 implemented and verified locally; ready for review/commit or P11-2 mem0 OSS planning
+Status: superseded by `2026-05-17-shyftr-phase-11-final-closeout.md`; Phase 11 is complete end-to-end with final JSON/HTML benchmark closeout.
 
 ## Current truth
 
-Phase 10 is committed and pushed. Phase 11 is the next roadmap phase.
+Phase 10 is committed and pushed. Phase 11 is now complete and closed by `2026-05-17-shyftr-phase-11-final-closeout.md` plus `docs/benchmarks/phase11-final-benchmark-report.html`.
 
-Phase 11 is external memory benchmarking. P11-0 documentation and P11-1 fixture-safe adapter harness are implemented locally. The next tranche is P11-2 mem0 OSS compatibility. Continue avoiding unsupported performance claims.
+Phase 11 remains claim-limited: committed reports are fixture-level benchmark reports, while LOCOMO-standard/LongMemEval/BEAM full runs require separate operator-provided local data and reviewed reports.
 
 ## Canonical documents
 

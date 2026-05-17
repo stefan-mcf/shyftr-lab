@@ -13,6 +13,14 @@ PYTHONPATH=.:src python scripts/convert_locomo_standard_fixture.py \
   --allow-private-input
 ```
 
+The helper also writes a sidecar manifest by default:
+
+```text
+artifacts/benchmarks/locomo_standard_converted.fixture.json.manifest.json
+```
+
+The manifest records input/output SHA-256 digests, fixture counts, privacy posture, and the explicit claim limit. Use `--no-manifest` only for scratch debugging.
+
 For a public-safe converted fixture, the input must declare `contains_private_data: false` and the command must use `--public-output`:
 
 ```bash

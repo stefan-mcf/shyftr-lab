@@ -5,7 +5,7 @@ Status: Phase 11 harness docs. No benchmark result claim is made by this folder.
 ## P11-1: fixture-safe adapter harness
 
 This repo includes a minimal, fixture-safe harness for exercising the Phase 11 adapter contract.
-It starts with a synthetic fixture, adds a tiny public-safe LOCOMO-mini shaped fixture (P11-3), reports retrieval metrics at multiple top-k cutoffs from one fair ranked-list call per question (P11-4a), and now includes a download-free LOCOMO-standard mapping layer (P11-4d).
+It starts with a synthetic fixture, adds a tiny public-safe LOCOMO-mini shaped fixture (P11-3), reports retrieval metrics at multiple top-k cutoffs from one fair ranked-list call per question (P11-4a), includes a download-free LOCOMO-standard mapping layer (P11-4d), and now closes Phase 11 with measured fixture reports plus a polished HTML closeout dossier.
 
 Key constraints:
 
@@ -65,7 +65,14 @@ P11-4e LOCOMO local conversion helper:
 
 - `scripts/convert_locomo_standard_fixture.py` converts operator-provided local normalized LOCOMO-style JSON/JSONL into guarded fixture JSON.
 - The helper writes only under `artifacts/`, `reports/`, or `tmp/` and requires `.json` output.
+- By default, the helper writes a `.manifest.json` sidecar with input/output SHA-256 digests, fixture counts, privacy posture, and claim limits.
 - Private or unknown input requires `--allow-private-input`; public-safe output requires `--public-output` plus `contains_private_data: false`.
+
+Final closeout:
+
+- `reports/benchmarks/phase11_synthetic_mini.json` and `reports/benchmarks/phase11_locomo_mini.json` are the committed public-safe fixture reports.
+- `docs/benchmarks/phase11-final-benchmark-report.json` summarizes the closeout in machine-readable form.
+- `docs/benchmarks/phase11-final-benchmark-report.html` is the polished human-facing report.
 
 Output write safety:
 

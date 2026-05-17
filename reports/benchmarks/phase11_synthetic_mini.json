@@ -1,0 +1,307 @@
+{
+  "aggregate_metrics": {
+    "backend_status_counts": {
+      "ok": 2,
+      "skipped": 1
+    },
+    "backends": [
+      "shyftr",
+      "no-memory",
+      "mem0-oss"
+    ],
+    "cost_latency_summary": {
+      "mem0-oss": {},
+      "no-memory": {
+        "backend_wall_ms": 0.06712498725391924,
+        "ingest_ms": null,
+        "notes": {},
+        "search_count": 3,
+        "search_ms_avg": 0.0008746671179930369,
+        "search_ms_max": 0.0011659867595881224,
+        "search_ms_total": 0.0026240013539791107
+      },
+      "shyftr": {
+        "backend_wall_ms": 11.610541987465695,
+        "ingest_ms": 2.0694579870905727,
+        "notes": {},
+        "search_count": 3,
+        "search_ms_avg": 0.7644309953320771,
+        "search_ms_max": 1.1493339843582362,
+        "search_ms_total": 2.2932929859962314
+      }
+    },
+    "note": "Aggregate metrics remain fixture-level and claim-limited in Phase 11.",
+    "resume_summary": {
+      "resumed_backend_count": 0,
+      "resumed_backends": []
+    },
+    "retry_summary": {
+      "backend_count_with_retry_events": 0,
+      "backends": {
+        "mem0-oss": {},
+        "no-memory": {
+          "event_count": 0,
+          "events": [],
+          "max_retries": 0,
+          "retried_operation_count": 0,
+          "retried_operations": []
+        },
+        "shyftr": {
+          "event_count": 0,
+          "events": [],
+          "max_retries": 0,
+          "retried_operation_count": 0,
+          "retried_operations": []
+        }
+      }
+    },
+    "timeout_summary": {
+      "timeout_enforcement": "hard_signal_alarm",
+      "timeout_failures": [],
+      "timeout_seconds": 60
+    }
+  },
+  "backend_results": [
+    {
+      "backend_name": "shyftr",
+      "config_summary": {
+        "backend_name": "shyftr"
+      },
+      "control_audit": {
+        "append_only_preservation": "not_run",
+        "feedback_visibility": "not_supported",
+        "pack_compactness": 1.0,
+        "provenance_coverage": 1.0,
+        "replay_status": "not_run",
+        "review_gate_compliance": "not_evaluated",
+        "sensitivity_leak_rate": 0.0
+      },
+      "cost_latency": {
+        "ingest_ms": 2.0694579870905727,
+        "notes": {},
+        "retry_summary": {
+          "event_count": 0,
+          "events": [],
+          "max_retries": 0,
+          "retried_operation_count": 0,
+          "retried_operations": []
+        },
+        "search_ms": [
+          1.1493339843582362,
+          0.5446249851956964,
+          0.5993340164422989
+        ],
+        "summary": {
+          "backend_wall_ms": 11.610541987465695,
+          "ingest_ms": 2.0694579870905727,
+          "notes": {},
+          "search_count": 3,
+          "search_ms_avg": 0.7644309953320771,
+          "search_ms_max": 1.1493339843582362,
+          "search_ms_total": 2.2932929859962314
+        }
+      },
+      "errors": [],
+      "ingest": {
+        "conversation_count": 2
+      },
+      "metrics": {
+        "retrieval": {
+          "mrr": 1.0,
+          "precision_at_k": 0.4444444444444444,
+          "question_count": 3,
+          "recall_at_k": 1.0
+        },
+        "retrieval_by_k": {
+          "1": {
+            "mrr": 1.0,
+            "precision_at_k": 1.0,
+            "question_count": 3,
+            "recall_at_k": 1.0
+          },
+          "3": {
+            "mrr": 1.0,
+            "precision_at_k": 0.4444444444444444,
+            "question_count": 3,
+            "recall_at_k": 1.0
+          }
+        }
+      },
+      "retrieval_details": null,
+      "search": {
+        "latency_ms": [
+          1.1493339843582362,
+          0.5446249851956964,
+          0.5993340164422989
+        ],
+        "question_count": 3,
+        "top_k": 3,
+        "top_k_values": [
+          1,
+          3
+        ]
+      },
+      "status": "ok",
+      "status_reason": null
+    },
+    {
+      "backend_name": "no-memory",
+      "config_summary": {
+        "backend_name": "no-memory"
+      },
+      "control_audit": {
+        "append_only_preservation": "not_run",
+        "feedback_visibility": "not_supported",
+        "pack_compactness": null,
+        "provenance_coverage": 0.0,
+        "replay_status": "not_run",
+        "review_gate_compliance": "not_supported",
+        "sensitivity_leak_rate": 0.0
+      },
+      "cost_latency": {
+        "ingest_ms": null,
+        "notes": {},
+        "retry_summary": {
+          "event_count": 0,
+          "events": [],
+          "max_retries": 0,
+          "retried_operation_count": 0,
+          "retried_operations": []
+        },
+        "search_ms": [
+          0.0011659867595881224,
+          0.0007500057108700275,
+          0.0007080088835209608
+        ],
+        "summary": {
+          "backend_wall_ms": 0.06712498725391924,
+          "ingest_ms": null,
+          "notes": {},
+          "search_count": 3,
+          "search_ms_avg": 0.0008746671179930369,
+          "search_ms_max": 0.0011659867595881224,
+          "search_ms_total": 0.0026240013539791107
+        }
+      },
+      "errors": [],
+      "ingest": {
+        "conversation_count": 2
+      },
+      "metrics": {
+        "retrieval": {
+          "mrr": 0.0,
+          "precision_at_k": 0.0,
+          "question_count": 3,
+          "recall_at_k": 0.0
+        },
+        "retrieval_by_k": {
+          "1": {
+            "mrr": 0.0,
+            "precision_at_k": 0.0,
+            "question_count": 3,
+            "recall_at_k": 0.0
+          },
+          "3": {
+            "mrr": 0.0,
+            "precision_at_k": 0.0,
+            "question_count": 3,
+            "recall_at_k": 0.0
+          }
+        }
+      },
+      "retrieval_details": null,
+      "search": {
+        "latency_ms": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "question_count": 3,
+        "top_k": 3,
+        "top_k_values": [
+          1,
+          3
+        ]
+      },
+      "status": "ok",
+      "status_reason": null
+    },
+    {
+      "backend_name": "mem0-oss",
+      "config_summary": {
+        "backend_name": "mem0-oss"
+      },
+      "control_audit": {},
+      "cost_latency": {},
+      "errors": [],
+      "ingest": {},
+      "metrics": {},
+      "retrieval_details": null,
+      "search": {},
+      "status": "skipped",
+      "status_reason": "mem0 (OSS) Python package not installed. Install an OSS/local mem0 package to enable this backend. This harness does not auto-install optional deps."
+    }
+  ],
+  "claims_allowed": [
+    "This report records a fixture-safe retrieval run under a pinned harness configuration."
+  ],
+  "claims_not_allowed": [
+    "No broad performance or superiority claims are supported by this fixture-level run.",
+    "No hosted or production claims are supported."
+  ],
+  "dataset": {
+    "contains_private_data": false,
+    "conversation_count": 2,
+    "fixture_path": null,
+    "name": "synthetic-mini",
+    "question_count": 3,
+    "split": "synthetic-mini-001",
+    "version": "v0"
+  },
+  "fairness": {
+    "answerer_owned_by_runner": true,
+    "backend_answering_enabled": false,
+    "cold_run": true,
+    "judge_owned_by_runner": true,
+    "max_retries": 0,
+    "timeout_seconds": 60,
+    "top_k_values": [
+      1,
+      3
+    ]
+  },
+  "generated_at": "2026-05-17T10:03:59.864582Z",
+  "limitations": [
+    "Phase 11 fixtures are tiny and public-safe; not a full LOCOMO/LongMemEval/BEAM run.",
+    "Answerer/judge are disabled in Phase 11; only retrieval and adapter-status contracts are exercised.",
+    "No broad performance or task-success claims are supported by these fixture runs."
+  ],
+  "models": {
+    "answerer": {
+      "name": "runner-owned",
+      "version": null
+    },
+    "embedding": {
+      "name": "backend-owned",
+      "version": null
+    },
+    "judge": {
+      "name": "runner-owned",
+      "version": null
+    }
+  },
+  "run_id": "phase11-final-synthetic",
+  "runner": {
+    "command": null,
+    "cwd": "/Users/stefan/ShyftR",
+    "environment_notes": {
+      "optional_deps": {},
+      "platform": "macOS-15.3.1-arm64-arm-64bit"
+    },
+    "git_sha": "49bc740ed6cd065784a265f015823e83f9e7c2f8",
+    "name": "run_memory_benchmark.py",
+    "python_version": "3.10.9",
+    "version": "phase11-p11-4c"
+  },
+  "schema_version": "shyftr-memory-benchmark-report/v0"
+}
