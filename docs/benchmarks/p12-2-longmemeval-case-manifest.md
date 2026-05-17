@@ -1,8 +1,8 @@
-# P12-2 LongMemEval case manifest and isolation contract
+# P12-2 LongMemEval case manifest and per-question grouping contract
 
 Status: implemented as local mapping/conversion metadata. No LongMemEval dataset is downloaded or run.
 
-The LongMemEval mapper preserves each question case as an isolation group. Converted fixtures carry per-question metadata through conversation/message metadata and question evaluation notes. The conversion sidecar includes a nested case manifest with:
+The LongMemEval mapper preserves each question case as a per-question grouping marker. Converted fixtures carry per-question metadata through conversation/message metadata and question evaluation notes. The conversion sidecar includes a nested case manifest with:
 
 - case count;
 - session count;
