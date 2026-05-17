@@ -143,3 +143,8 @@ Not allowed without further evidence:
 ## First implementation target
 
 The first implementation target is a tiny fixture-safe adapter harness that compares ShyftR with a no-memory baseline and emits report JSON. mem0 OSS compatibility comes after that contract is stable.
+
+
+## Phase 12 answer-eval method
+
+Answer evaluation is runner-owned and deterministic by default. Backends retrieve items only; the runner applies the selected answerer and judge above the same retrieved item list. This keeps backend comparison scoped to retrieval and prevents backend-owned generation from changing the benchmark contract. Optional LLM judging is design-gated and skipped unless a future explicit run enables it.

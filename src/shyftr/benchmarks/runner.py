@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
 
 from shyftr.benchmarks.adapters.base import AdapterSkip, BackendAdapter
+from shyftr.benchmarks.answerer import build_answerer
 from shyftr.benchmarks.fixture import BenchmarkFixture
+from shyftr.benchmarks.judge import build_judge
 from shyftr.benchmarks.report import BackendResult, BenchmarkReport, REPORT_SCHEMA_VERSION, utc_now_iso
 from shyftr.benchmarks.types import RetrievalItem, SearchOutput
 
@@ -206,6 +208,8 @@ def _compute_retrieval_metrics(search_outputs: Sequence[SearchOutput], expected_
     recall_sum = 0.0
     precision_sum = 0.0
     mrr_sum = 0.0
+    ndcg_sum = 0.0
+    supported_questions = 0
 
     for out in search_outputs:
         expected = expected_item_ids.get(out.query_id)
@@ -218,14 +222,22 @@ def _compute_retrieval_metrics(search_outputs: Sequence[SearchOutput], expected_
         precision = len(set(relevant_returned)) / float(len(set(returned_ids))) if returned_ids else 0.0
 
         rr = 0.0
+        dcg = 0.0
         for rank, rid in enumerate(returned_ids, start=1):
             if rid in expected:
+                dcg += 1.0 / math.log2(rank + 1)
                 rr = 1.0 / float(rank)
                 break
+        ideal_relevant = min(len(set(expected)), k)
+        idcg = sum(1.0 / math.log2(rank + 1) for rank in range(1, ideal_relevant + 1))
+
+        if relevant_returned:
+            supported_questions += 1
 
         recall_sum += recall
         precision_sum += precision
         mrr_sum += rr
+        ndcg_sum += (dcg / idcg) if idcg else 0.0
 
     if total_questions == 0:
         return {
@@ -233,6 +245,10 @@ def _compute_retrieval_metrics(search_outputs: Sequence[SearchOutput], expected_
             "recall_at_k": None,
             "precision_at_k": None,
             "mrr": None,
+            "ndcg_at_k": None,
+            "answer_support_coverage": "not_supported",
+            "conflict_retrieval_rate": "not_supported",
+            "stale_retrieval_rate": "not_supported",
         }
 
     return {
@@ -240,6 +256,10 @@ def _compute_retrieval_metrics(search_outputs: Sequence[SearchOutput], expected_
         "recall_at_k": recall_sum / total_questions,
         "precision_at_k": precision_sum / total_questions,
         "mrr": mrr_sum / total_questions,
+        "ndcg_at_k": ndcg_sum / total_questions,
+        "answer_support_coverage": supported_questions / total_questions,
+        "conflict_retrieval_rate": "not_supported",
+        "stale_retrieval_rate": "not_supported",
     }
 
 
@@ -342,6 +362,68 @@ def _compute_control_audit(items: Iterable[RetrievalItem]) -> Dict[str, Any]:
     }
 
 
+
+def _compute_answer_eval(
+    *,
+    fixture: BenchmarkFixture,
+    search_outputs: Sequence[SearchOutput],
+    answerer_name: str,
+    judge_name: str,
+) -> Dict[str, Any]:
+    answerer = build_answerer(answerer_name)
+    judge = build_judge(judge_name)
+    by_question = {q.question_id: q for q in fixture.questions}
+    results: List[Dict[str, Any]] = []
+    by_type: Dict[str, Dict[str, Any]] = {}
+    correct = correct_abstention = missed = unsupported = abstained = 0
+    f1_values: List[float] = []
+
+    for out in search_outputs:
+        question = by_question.get(out.query_id)
+        if question is None:
+            continue
+        answer = answerer.answer(question=question, retrieved_items=out.items)
+        judged = judge.judge(question=question, answer=answer)
+        if judged.verdict in {"correct", "partially_correct"}:
+            correct += 1
+        if judged.verdict == "correct_abstention":
+            correct_abstention += 1
+        if judged.verdict == "missed_answer":
+            missed += 1
+        if judged.verdict == "unsupported_answer":
+            unsupported += 1
+        if answer.answer_state.startswith("abstained"):
+            abstained += 1
+        if judged.token_f1 is not None:
+            f1_values.append(float(judged.token_f1))
+        label = question.question_type or "unknown"
+        bucket = by_type.setdefault(label, {"question_count": 0, "correct": 0, "missed_answer": 0, "unsupported_answer": 0})
+        bucket["question_count"] += 1
+        if judged.verdict in {"correct", "partially_correct"}:
+            bucket["correct"] += 1
+        if judged.verdict == "missed_answer":
+            bucket["missed_answer"] += 1
+        if judged.verdict == "unsupported_answer":
+            bucket["unsupported_answer"] += 1
+        results.append({"query_id": out.query_id, "answer": answer.to_dict(), "judge": judged.to_dict()})
+
+    total = len(results)
+    return {
+        "enabled": True,
+        "answerer": getattr(answerer, "name", answerer_name),
+        "judge": getattr(judge, "name", judge_name),
+        "question_count": total,
+        "correctness": (correct / total) if total else None,
+        "token_f1": (sum(f1_values) / len(f1_values)) if f1_values else None,
+        "abstention_rate": (abstained / total) if total else None,
+        "correct_abstention_rate": (correct_abstention / total) if total else None,
+        "missed_answer_rate": (missed / total) if total else None,
+        "unsupported_answer_rate": (unsupported / total) if total else None,
+        "by_question_type": by_type,
+        "results": results,
+        "claim_limit": "fixture-level runner-owned deterministic answer evaluation only; not a standard-dataset answer-quality claim",
+    }
+
 def run_fixture_benchmark(
     *,
     fixture: BenchmarkFixture,
@@ -357,6 +439,9 @@ def run_fixture_benchmark(
     timeout_seconds: int = 60,
     max_retries: int = 0,
     resume_existing: bool = False,
+    enable_answer_eval: bool = False,
+    answerer_name: str = "deterministic-extractive",
+    judge_name: str = "deterministic-composite",
 ) -> BenchmarkReport:
     normalized_top_k_values = _normalize_top_k_values(top_k_values)
     max_top_k = max(normalized_top_k_values)
@@ -364,6 +449,8 @@ def run_fixture_benchmark(
         top_k_values=list(normalized_top_k_values),
         timeout_seconds=int(timeout_seconds),
         max_retries=int(max_retries),
+        answerer_owned_by_runner=bool(enable_answer_eval),
+        judge_owned_by_runner=bool(enable_answer_eval),
     ).to_dict()
 
     # Runner metadata must be public-safe.
@@ -391,8 +478,8 @@ def run_fixture_benchmark(
     }
 
     models = {
-        "answerer": {"name": "runner-owned", "version": None},
-        "judge": {"name": "runner-owned", "version": None},
+        "answerer": {"name": str(answerer_name) if enable_answer_eval else "runner-owned-disabled", "version": "phase12-v0" if enable_answer_eval else None},
+        "judge": {"name": str(judge_name) if enable_answer_eval else "runner-owned-disabled", "version": "phase12-v0" if enable_answer_eval else None},
         "embedding": {"name": "backend-owned", "version": None},
     }
 
@@ -406,7 +493,7 @@ def run_fixture_benchmark(
         models=models,
         limitations=[
             "Phase 11 fixtures are tiny and public-safe; not a full LOCOMO/LongMemEval/BEAM run.",
-            "Answerer/judge are disabled in Phase 11; only retrieval and adapter-status contracts are exercised.",
+            "Answerer/judge are runner-owned and deterministic when enabled; no external LLM calls are made.",
             "No broad performance or task-success claims are supported by these fixture runs.",
         ],
         claims_allowed=[
@@ -480,6 +567,15 @@ def run_fixture_benchmark(
                 "retrieval": retrieval_by_k[str(top_k)],
                 "retrieval_by_k": retrieval_by_k,
             }
+            if enable_answer_eval:
+                metrics["answer_eval"] = _compute_answer_eval(
+                    fixture=fixture,
+                    search_outputs=search_outputs,
+                    answerer_name=answerer_name,
+                    judge_name=judge_name,
+                )
+            else:
+                metrics["answer_eval"] = {"enabled": False, "reason": "enable_answer_eval flag not set"}
             control_audit = _compute_control_audit(all_items)
             raw_cost_latency = adapter.export_cost_latency_stats()
             backend_wall_ms = (time.perf_counter() - started_backend) * 1000.0

@@ -112,7 +112,25 @@ PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
 
 Planned (not included / not downloaded by default): full LOCOMO execution, LongMemEval, BEAM.
 
+Phase 12 complete:
+
+- `longmemeval-standard`: download-free mapping layer for explicit local normalized LongMemEval-style JSON files, plus a guarded conversion helper and case manifest.
+- `beam-standard`: download-free local subset mapping layer for explicit local normalized BEAM-style JSON files, plus a guarded conversion helper.
+- `--enable-answer-eval`: opt-in runner-owned deterministic answer evaluation for fixture-level reports.
+
 Claim limitations:
 
 - These fixtures are not a task-success benchmark.
 - Do not use fixture runs for broad benchmark or superiority claims.
+
+
+## Phase 12 additions
+
+Phase 12 extends the fixture-safe harness with standard-dataset mapping scaffolds and deterministic runner-owned answer evaluation:
+
+- `longmemeval-standard`: local-path/private-by-default mapping for normalized LongMemEval-style JSON. Requires `--fixture-path` and `--fixture-format longmemeval-standard`; no data is downloaded.
+- `beam-standard`: local-path/private-by-default mapping for normalized BEAM-style JSON. Requires `--fixture-path` and `--fixture-format beam-standard`; no data is downloaded.
+- `--enable-answer-eval`: adds runner-owned deterministic answer metrics to fixture-level reports. The default remains disabled.
+- `scripts/convert_longmemeval_standard_fixture.py` and `scripts/convert_beam_standard_fixture.py`: guarded conversion helpers with manifest sidecars and SHA-256 digests.
+
+Phase 12 reports separate fixture retrieval metrics, fixture answer-eval metrics, mapping readiness, skipped optional LLM judging, and claims not allowed. No full LongMemEval or BEAM performance claim is made.

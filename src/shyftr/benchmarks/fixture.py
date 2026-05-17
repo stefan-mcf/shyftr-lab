@@ -233,6 +233,14 @@ def resolve_benchmark_fixture(
             from shyftr.benchmarks.locomo_standard import load_locomo_standard_json
 
             return load_locomo_standard_json(Path(fixture_path), allow_private_data=allow_private_data)
+        if fmt == "longmemeval-standard":
+            from shyftr.benchmarks.longmemeval_standard import load_longmemeval_standard_json
+
+            return load_longmemeval_standard_json(Path(fixture_path), allow_private_data=allow_private_data)
+        if fmt == "beam-standard":
+            from shyftr.benchmarks.beam_standard import load_beam_standard_json
+
+            return load_beam_standard_json(Path(fixture_path), allow_private_data=allow_private_data)
         if fmt not in {"shyftr-fixture", "fixture", "auto"}:
             raise ValueError(f"unknown fixture format: {fixture_format}")
         return load_fixture_json(Path(fixture_path), allow_private_data=allow_private_data)
@@ -242,10 +250,13 @@ def resolve_benchmark_fixture(
         return synthetic_mini_fixture()
     if name == "locomo-standard":
         raise ValueError("locomo-standard requires --fixture-path and --fixture-format locomo-standard; no dataset is downloaded by default")
+    if name == "longmemeval-standard":
+        raise ValueError("longmemeval-standard requires --fixture-path and --fixture-format longmemeval-standard; no dataset is downloaded by default")
+    if name == "beam-standard":
+        raise ValueError("beam-standard requires --fixture-path and --fixture-format beam-standard; no dataset is downloaded by default")
 
     # Builtins stored as checked-in JSON files.
     return load_fixture_json(get_builtin_fixture_path(name), allow_private_data=allow_private_data)
-
 
 __all__ = [
     "BenchmarkFixture",

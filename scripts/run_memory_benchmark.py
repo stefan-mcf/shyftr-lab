@@ -27,7 +27,7 @@ def _parse_top_k_values(raw: str) -> list[int]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-4c: deterministic retry accounting)."
+        description="Run the ShyftR fixture-safe memory benchmark harness with Phase 12 answer-eval support."
     )
     parser.add_argument("--run-id", default="local-dev", help="Run identifier written into the report.")
     parser.add_argument(
@@ -50,7 +50,7 @@ def main() -> int:
     parser.add_argument(
         "--fixture",
         default="synthetic-mini",
-        choices=["synthetic-mini", "locomo-mini", "locomo-standard"],
+        choices=["synthetic-mini", "locomo-mini", "locomo-standard", "longmemeval-standard"],
         help="Fixture selector (default: synthetic-mini).",
     )
     parser.add_argument(
@@ -61,9 +61,13 @@ def main() -> int:
     parser.add_argument(
         "--fixture-format",
         default="shyftr-fixture",
-        choices=["shyftr-fixture", "locomo-standard"],
-        help="Format for --fixture-path. locomo-standard maps a local normalized LOCOMO-style JSON file without downloading data.",
+        choices=["shyftr-fixture", "locomo-standard", "longmemeval-standard"],
+        help=(
+            "Format for --fixture-path. locomo-standard maps a local normalized LOCOMO-style JSON file; "
+            "longmemeval-standard maps a local normalized LongMemEval-style JSON file. No datasets are downloaded by default."
+        ),
     )
+
     parser.add_argument(
         "--allow-private-fixture",
         action="store_true",
@@ -92,6 +96,23 @@ def main() -> int:
         "--include-mem0-oss",
         action="store_true",
         help="Include the optional mem0 OSS/local backend adapter (default: off; skipped if mem0 not installed).",
+    )
+    parser.add_argument(
+        "--enable-answer-eval",
+        action="store_true",
+        help="Enable runner-owned deterministic answer evaluation for fixture-level runs.",
+    )
+    parser.add_argument(
+        "--answerer",
+        default="deterministic-extractive",
+        choices=["deterministic-extractive", "fixed-label-debug"],
+        help="Runner-owned answerer to use when --enable-answer-eval is set.",
+    )
+    parser.add_argument(
+        "--judge",
+        default="deterministic-composite",
+        choices=["deterministic-composite"],
+        help="Runner-owned deterministic judge to use when --enable-answer-eval is set.",
     )
 
     args = parser.parse_args()
@@ -136,6 +157,9 @@ def main() -> int:
         timeout_seconds=int(args.timeout_seconds),
         max_retries=int(args.max_retries),
         resume_existing=bool(args.resume_existing),
+        enable_answer_eval=bool(args.enable_answer_eval),
+        answerer_name=str(args.answerer),
+        judge_name=str(args.judge),
     )
 
     return 0

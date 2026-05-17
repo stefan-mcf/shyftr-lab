@@ -144,3 +144,8 @@ When a backend cannot expose a metric, use `not_supported` rather than inventing
 ## Claim blocks
 
 `claims_allowed` should include only claims supported by the run. `claims_not_allowed` should explicitly block broad superiority, production, hosted, or unmeasured task-success claims.
+
+
+## Phase 12 fields
+
+Backend `metrics` may include `answer_eval` with `enabled`, `answerer`, `judge`, `correctness`, `token_f1`, `abstention_rate`, `correct_abstention_rate`, `missed_answer_rate`, `unsupported_answer_rate`, `by_question_type`, and per-question result rows. Retrieval metrics now include `ndcg_at_k`, `answer_support_coverage`, and explicit `not_supported` values for conflict/stale retrieval rates when fixture labels do not support those controls.

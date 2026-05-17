@@ -3,7 +3,7 @@
 Date: 2026-05-18
 Repo: `/Users/stefan/ShyftR`
 Starting commit: `bda4817884f3605bed30e9480563df7b6348bc56`
-Status: ready to begin P12-1 after this packet is committed and CI is green
+Status: superseded by `2026-05-18-shyftr-phase-12-final-closeout.md` after local Phase 12 completion
 
 ## Current truth
 
