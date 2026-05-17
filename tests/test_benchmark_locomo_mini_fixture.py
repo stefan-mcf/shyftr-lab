@@ -48,6 +48,18 @@ class CountingNoMemoryBackendAdapter(NoMemoryBackendAdapter):
         super().reset_run(run_id)
 
 
+class FlakySearchBackendAdapter(NoMemoryBackendAdapter):
+    def __init__(self) -> None:
+        super().__init__(backend_name="flaky-search")
+        self.search_attempt_count = 0
+
+    def search(self, *, query_id: str, query: str, top_k: int) -> SearchOutput:
+        self.search_attempt_count += 1
+        if self.search_attempt_count == 1:
+            raise RuntimeError("transient fixture failure")
+        return super().search(query_id=query_id, query=query, top_k=top_k)
+
+
 def test_locomo_mini_fixture_json_loads_and_is_public_safe() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     path = repo_root / "fixtures" / "benchmarks" / "locomo-mini.fixture.json"
@@ -166,6 +178,44 @@ def test_benchmark_timeout_marks_backend_failed(tmp_path: Path) -> None:
     assert "timed out" in result["status_reason"]
     assert payload["aggregate_metrics"]["timeout_summary"]["timeout_failures"] == ["slow-search"]
     assert payload["aggregate_metrics"]["timeout_summary"]["timeout_enforcement"] in {"hard_signal_alarm", "not_available"}
+
+
+def test_retry_execution_records_successful_retry(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    (repo_root / "artifacts").mkdir(parents=True, exist_ok=True)
+    (repo_root / "tmp").mkdir(parents=True, exist_ok=True)
+
+    fixture = resolve_benchmark_fixture(fixture_name="locomo-mini")
+    out_path = repo_root / "artifacts" / "benchmarks" / "retry_report.json"
+    adapter = FlakySearchBackendAdapter()
+
+    run_fixture_benchmark(
+        fixture=fixture,
+        adapters=[adapter],
+        run_id="retry-mini",
+        output_path=out_path,
+        repo_root=repo_root,
+        top_k_values=[1],
+        include_retrieval_details=False,
+        runner_name="pytest",
+        command_argv=["pytest"],
+        max_retries=1,
+    )
+
+    payload = json.loads(out_path.read_text(encoding="utf-8"))
+    result = payload["backend_results"][0]
+    retry_summary = result["cost_latency"]["retry_summary"]
+
+    assert result["backend_name"] == "flaky-search"
+    assert result["status"] == "ok"
+    assert payload["fairness"]["max_retries"] == 1
+    assert retry_summary["max_retries"] == 1
+    assert retry_summary["event_count"] == 2
+    assert retry_summary["retried_operation_count"] == 1
+    assert retry_summary["events"][0]["status"] == "retrying"
+    assert retry_summary["events"][1]["status"] == "succeeded_after_retry"
+    assert payload["aggregate_metrics"]["retry_summary"]["backend_count_with_retry_events"] == 1
 
 
 def test_resume_existing_reuses_completed_backend_result(tmp_path: Path) -> None:

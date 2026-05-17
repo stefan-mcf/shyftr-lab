@@ -27,7 +27,7 @@ def _parse_top_k_values(raw: str) -> list[int]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-4b: timeout and resume readiness)."
+        description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-4c: deterministic retry accounting)."
     )
     parser.add_argument("--run-id", default="local-dev", help="Run identifier written into the report.")
     parser.add_argument(
@@ -74,7 +74,7 @@ def main() -> int:
         "--max-retries",
         type=int,
         default=0,
-        help="Retry count recorded in fairness metadata; retries are reserved for a later tranche.",
+        help="Retry count applied to adapter reset, ingest, and search operations; retry events are written to the report.",
     )
     parser.add_argument(
         "--resume-existing",

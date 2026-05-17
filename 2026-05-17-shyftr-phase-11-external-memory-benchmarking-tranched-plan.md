@@ -197,6 +197,17 @@ Before adding larger standard-dataset adapters, prove local run controls:
 
 This tranche still uses only fixture-safe datasets and does not download LOCOMO, LongMemEval, or BEAM.
 
+### P11-4c: Deterministic retry accounting
+
+After timeout/resume controls, make retry behavior executable and auditable:
+
+- `max_retries` applies to adapter reset, ingest, and search operations;
+- retry events are recorded per backend with operation, attempt, status, and error type;
+- aggregate reports disclose which backends had retry events;
+- adapter-declared skips remain skips and are not retried.
+
+This tranche still uses only fixture-safe datasets and does not download LOCOMO, LongMemEval, or BEAM.
+
 ### P11-4: Larger benchmark expansion
 
 Deliverables:

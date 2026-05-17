@@ -100,6 +100,60 @@ def _run_with_timeout(fn: Callable[[], Any], *, timeout_seconds: int) -> Any:
         return fn()
 
 
+def _run_with_retries(
+    fn: Callable[[], Any],
+    *,
+    timeout_seconds: int,
+    max_retries: int,
+    backend_name: str,
+    operation: str,
+    retry_events: List[Dict[str, Any]],
+) -> Any:
+    attempts_allowed = max(0, int(max_retries)) + 1
+    for attempt_index in range(attempts_allowed):
+        attempt_number = attempt_index + 1
+        try:
+            result = _run_with_timeout(fn, timeout_seconds=timeout_seconds)
+            if attempt_index > 0:
+                retry_events.append(
+                    {
+                        "backend_name": backend_name,
+                        "operation": operation,
+                        "attempt": attempt_number,
+                        "status": "succeeded_after_retry",
+                    }
+                )
+            return result
+        except AdapterSkip:
+            raise
+        except Exception as exc:
+            will_retry = attempt_number < attempts_allowed
+            retry_events.append(
+                {
+                    "backend_name": backend_name,
+                    "operation": operation,
+                    "attempt": attempt_number,
+                    "status": "retrying" if will_retry else "failed",
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                }
+            )
+            if not will_retry:
+                raise
+    raise RuntimeError("unreachable retry loop state")
+
+
+def _summarize_retries(retry_events: Sequence[Dict[str, Any]], *, max_retries: int) -> Dict[str, Any]:
+    retried_operations = sorted({str(event.get("operation")) for event in retry_events if event.get("status") in {"retrying", "succeeded_after_retry"}})
+    return {
+        "max_retries": max(0, int(max_retries)),
+        "event_count": len(list(retry_events)),
+        "retried_operation_count": len(retried_operations),
+        "retried_operations": retried_operations,
+        "events": [dict(event) for event in retry_events],
+    }
+
+
 def _backend_result_from_dict(payload: Dict[str, Any]) -> BackendResult:
     return BackendResult(
         backend_name=str(payload.get("backend_name", "unknown")),
@@ -223,10 +277,12 @@ def _aggregate_backend_summaries(backend_results: Sequence[BackendResult], *, ti
     status_counts: Dict[str, int] = {}
     cost_latency_by_backend: Dict[str, Any] = {}
     timeout_failures: List[str] = []
+    retry_events_by_backend: Dict[str, Any] = {}
 
     for result in backend_results:
         status_counts[result.status] = status_counts.get(result.status, 0) + 1
         cost_latency_by_backend[result.backend_name] = result.cost_latency.get("summary", {}) if result.cost_latency else {}
+        retry_events_by_backend[result.backend_name] = result.cost_latency.get("retry_summary", {}) if result.cost_latency else {}
         reason = result.status_reason or ""
         if "timeout" in reason.lower() or "timed out" in reason.lower() or "TimeoutError" in reason:
             timeout_failures.append(result.backend_name)
@@ -243,6 +299,10 @@ def _aggregate_backend_summaries(backend_results: Sequence[BackendResult], *, ti
         "resume_summary": {
             "resumed_backend_count": len(list(resumed_backends or [])),
             "resumed_backends": list(resumed_backends or []),
+        },
+        "retry_summary": {
+            "backends": retry_events_by_backend,
+            "backend_count_with_retry_events": sum(1 for summary in retry_events_by_backend.values() if summary.get("event_count", 0)),
         },
         "note": "Aggregate metrics remain fixture-level and claim-limited in Phase 11.",
     }
@@ -292,7 +352,7 @@ def run_fixture_benchmark(
     top_k_values: Sequence[int] = (10,),
     include_retrieval_details: bool = True,
     runner_name: str = "run_memory_benchmark.py",
-    runner_version: str = "phase11-p11-4b",
+    runner_version: str = "phase11-p11-4c",
     command_argv: Optional[List[str]] = None,
     timeout_seconds: int = 60,
     max_retries: int = 0,
@@ -377,11 +437,26 @@ def run_fixture_benchmark(
         started_backend = time.perf_counter()
         search_outputs: List[SearchOutput] = []
         all_items: List[RetrievalItem] = []
+        retry_events: List[Dict[str, Any]] = []
         try:
-            _run_with_timeout(lambda: adapter.reset_run(run_id), timeout_seconds=int(timeout_seconds))
+            _run_with_retries(
+                lambda: adapter.reset_run(run_id),
+                timeout_seconds=int(timeout_seconds),
+                max_retries=int(max_retries),
+                backend_name=backend_name,
+                operation="reset_run",
+                retry_events=retry_events,
+            )
 
             for conv in fixture.conversations:
-                _run_with_timeout(lambda conv=conv: adapter.ingest_conversation(conv), timeout_seconds=int(timeout_seconds))
+                _run_with_retries(
+                    lambda conv=conv: adapter.ingest_conversation(conv),
+                    timeout_seconds=int(timeout_seconds),
+                    max_retries=int(max_retries),
+                    backend_name=backend_name,
+                    operation=f"ingest:{conv.conversation_id}",
+                    retry_events=retry_events,
+                )
 
             # Search each question once at the largest requested k, then compute
             # metrics at every configured cutoff from the same ranked list. This
@@ -389,9 +464,13 @@ def run_fixture_benchmark(
             # multi-cutoff reporting.
             top_k = int(max_top_k)
             for q in fixture.questions:
-                out = _run_with_timeout(
+                out = _run_with_retries(
                     lambda q=q: adapter.search(query_id=q.question_id, query=q.query, top_k=top_k),
                     timeout_seconds=int(timeout_seconds),
+                    max_retries=int(max_retries),
+                    backend_name=backend_name,
+                    operation=f"search:{q.question_id}",
+                    retry_events=retry_events,
                 )
                 search_outputs.append(out)
                 all_items.extend(out.items)
@@ -406,6 +485,7 @@ def run_fixture_benchmark(
             backend_wall_ms = (time.perf_counter() - started_backend) * 1000.0
             cost_latency = dict(raw_cost_latency)
             cost_latency["summary"] = _summarize_cost_latency(raw_cost_latency, backend_wall_ms=backend_wall_ms)
+            cost_latency["retry_summary"] = _summarize_retries(retry_events, max_retries=int(max_retries))
 
             backend_result = BackendResult(
                 backend_name=backend_name,
@@ -453,7 +533,7 @@ def run_fixture_benchmark(
                     search={},
                     metrics={},
                     retrieval_details=None,
-                    cost_latency={},
+                    cost_latency={"retry_summary": _summarize_retries(retry_events, max_retries=int(max_retries))},
                     control_audit={},
                     errors=[repr(exc)],
                 )

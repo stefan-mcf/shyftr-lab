@@ -136,7 +136,8 @@ Cost and timeout summaries:
 - each successful backend should include `cost_latency.summary` with ingest timing, search count, search total/average/max timing, and runner-observed backend wall time;
 - `aggregate_metrics.cost_latency_summary` should mirror those summaries by backend name;
 - `aggregate_metrics.timeout_summary` should report configured timeout seconds, timeout enforcement mode, and any backend names that failed with timeout-shaped errors;
-- `aggregate_metrics.resume_summary` should report backend results reused from an existing matching report when resume mode is enabled.
+- `aggregate_metrics.resume_summary` should report backend results reused from an existing matching report when resume mode is enabled;
+- `cost_latency.retry_summary` should report retry events for each backend, and `aggregate_metrics.retry_summary` should summarize which backends had retry events.
 
 When a backend cannot expose a metric, use `not_supported` rather than inventing a number.
 

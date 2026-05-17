@@ -117,7 +117,7 @@ A benchmark run must keep these fixed across comparable backends:
 - top-k cutoffs;
 - answerer model;
 - judge model;
-- timeout and retry policy;
+- timeout and retry policy plus retry event accounting;
 - resume policy for interrupted or repeated runs;
 - token accounting method;
 - cold or warm run mode.

@@ -47,7 +47,13 @@ P11-4b timeout and resume readiness:
 
 - `--timeout-seconds` sets a per adapter operation timeout. The runner uses SIGALRM where available and reports timeout-shaped failures in `aggregate_metrics.timeout_summary`.
 - `--resume-existing` reuses `ok` and `skipped` backend results from an existing report with the same run id and fixture identity, so larger local runs can resume without rerunning completed backends.
-- `--max-retries` is recorded in fairness metadata; actual retry execution remains reserved for a later tranche after timeout and resume behavior is stable.
+- `--max-retries` is now applied to adapter reset, ingest, and search operations. Retry details are recorded separately in the report.
+
+P11-4c deterministic retry accounting:
+
+- `--max-retries` now executes retry attempts for adapter reset, ingest, and search operations.
+- Retry events are written to each backend's `cost_latency.retry_summary` and aggregated under `aggregate_metrics.retry_summary`.
+- `AdapterSkip` remains a skip, not a retried failure.
 
 Output write safety:
 
