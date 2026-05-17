@@ -24,11 +24,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 from .decay import score_memory_decay
+from .episodes import list_latest_episodes
 from .ledger import append_jsonl, read_jsonl
 from .ledger_state import latest_by_key
 from .mutations import active_charge_ids
 from .frontier import project_confidence_state
 from .memory_classes import class_spec, resolve_memory_type
+from .models import EPISODE_KINDS
 from .policy import check_source_boundary  # noqa: F401 (re-exported for downstream)
 from .privacy import AccessPolicy, is_charge_export_allowed, redact_charge_projection
 from .retrieval.hybrid import (
@@ -471,6 +473,33 @@ def _read_fragments(cell_path: Path) -> List[Dict[str, Any]]:
     return [record for _, record in read_jsonl(ledger)]
 
 
+def _episode_requested(query: str, memory_types: Optional[Sequence[str]], query_kind: Optional[str] = None) -> bool:
+    requested_types = {resolve_memory_type(value) for value in (memory_types or []) if value is not None}
+    if "episodic" in requested_types:
+        return True
+    if requested_types:
+        return False
+    if query_kind in set(EPISODE_KINDS):
+        return True
+    query_terms = _terms(query)
+    history_terms = {"history", "happened", "previous", "prior", "incident", "failure", "failed", "outcome", "attempt", "provenance", "last"}
+    return bool(query_terms & history_terms)
+
+
+def _read_episodes(cell_path: Path, *, include_private: bool = False, allowed_sensitivity: Optional[Sequence[str]] = None) -> List[Dict[str, Any]]:
+    records: List[Dict[str, Any]] = []
+    allowed = set(allowed_sensitivity or ("public", "internal"))
+    for episode in list_latest_episodes(cell_path):
+        if episode.status in {"proposed", "rejected", "superseded"}:
+            continue
+        if not include_private and episode.sensitivity in {"private", "secret", "restricted"} and episode.sensitivity not in allowed:
+            continue
+        if not include_private and episode.sensitivity not in allowed:
+            continue
+        records.append(episode.to_dict())
+    return records
+
+
 # ---------------------------------------------------------------------------
 # Candidate building
 # ---------------------------------------------------------------------------
@@ -560,6 +589,42 @@ def _build_candidate_from_fragment(record: Dict[str, Any]) -> CandidateItem:
         status=record.get("review_status", "pending"),
         confidence=record.get("confidence"),
         negative_space_kind=negative_space_kind,
+    )
+
+
+def _build_candidate_from_episode(record: Dict[str, Any]) -> CandidateItem:
+    timeframe = " – ".join(value for value in (record.get("started_at"), record.get("ended_at")) if value)
+    if record.get("status") == "redacted" or record.get("sensitivity") in {"private", "secret", "restricted"}:
+        statement = f"Episode {record.get('episode_id') or ''}: redacted"
+    else:
+        statement = f"{record.get('title') or 'Episode'}: {record.get('summary') or ''}"
+    if timeframe:
+        statement = f"{statement} ({timeframe})"
+    if record.get("outcome"):
+        statement = f"{statement} Outcome: {record['outcome']}."
+    anchors = {
+        "live_context_entry_ids": record.get("live_context_entry_ids", []),
+        "memory_ids": record.get("memory_ids", []),
+        "feedback_ids": record.get("feedback_ids", []),
+        "resource_refs": record.get("resource_refs", []),
+        "grounding_refs": record.get("grounding_refs", []),
+        "artifact_refs": record.get("artifact_refs", []),
+    }
+    return CandidateItem(
+        item_id=record.get("episode_id", ""),
+        cell_id=record.get("cell_id", ""),
+        trust_tier="trace",
+        statement=statement.strip(),
+        rationale=json.dumps({"anchors": anchors}, sort_keys=True),
+        tags=["episode", str(record.get("outcome") or "")],
+        kind=record.get("episode_kind"),
+        memory_type="episodic",
+        grounding_refs=record.get("grounding_refs", []),
+        sensitivity=record.get("sensitivity"),
+        retention_hint=record.get("retention"),
+        status=record.get("status", "approved"),
+        confidence=record.get("confidence"),
+        decay=1.0 if record.get("status") == "archived" else 0.0,
     )
 
 
@@ -662,6 +727,12 @@ def assemble_pack(task: LoadoutTaskInput) -> AssembledLoadout:
     if task.include_fragments:
         for record in _read_fragments(cell_path):
             candidates.append(_build_candidate_from_fragment(record))
+
+    # Episodes are event-history background, included only when explicitly
+    # requested or the query asks for history/incidents/outcomes.
+    if _episode_requested(task.query, task.memory_types, task.query_kind):
+        for record in _read_episodes(cell_path, include_private=task.audit_mode, allowed_sensitivity=task.allowed_sensitivity):
+            candidates.append(_build_candidate_from_episode(record))
 
     # Filter by requested trust tiers if specified
     if task.requested_trust_tiers:

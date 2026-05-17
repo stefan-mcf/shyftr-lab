@@ -48,6 +48,8 @@ def test_tool_names_are_stable() -> None:
         "shyftr_live_context_resume",
         "shyftr_session_harvest",
         "shyftr_live_context_status",
+        "shyftr_episode_capture",
+        "shyftr_episode_search",
     )
 
 
@@ -117,6 +119,8 @@ def test_json_rpc_fallback_lists_and_calls_tools(tmp_path: Path) -> None:
     listed = _handle_json_rpc_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
     assert listed is not None
     assert {tool["name"] for tool in listed["result"]["tools"]} == set(tool_names())
+    episode_capture_tool = [tool for tool in listed["result"]["tools"] if tool["name"] == "shyftr_episode_capture"][0]
+    assert episode_capture_tool["inputSchema"]["required"] == ["cell_path", "episode_id"]
 
     called = _handle_json_rpc_message(
         {

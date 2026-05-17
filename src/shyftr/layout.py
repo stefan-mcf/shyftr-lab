@@ -46,6 +46,7 @@ SEEDED_JSONL_FILES = (
     "ledger/evolution/reviews.jsonl",
     "ledger/evolution/simulations.jsonl",
     "ledger/simulation_reports.jsonl",
+    "ledger/episodes.jsonl",
     "ledger/feedback.jsonl",
     "ledger/confidence_events.jsonl",
     "ledger/retrieval_affinity_events.jsonl",

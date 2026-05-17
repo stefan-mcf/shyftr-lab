@@ -9,10 +9,11 @@ import re
 from typing import Any, Dict, List, Optional, Sequence, Union
 from uuid import uuid4
 
+from shyftr.episodes import list_latest_episodes
 from shyftr.ledger import append_jsonl
 from shyftr.ledger_state import latest_by_key
 from shyftr.memory_classes import class_spec, infer_memory_type, resolve_memory_type, validate_resource_memory
-from shyftr.models import Fragment, Source, Trace
+from shyftr.models import EPISODE_KINDS, Fragment, Source, Trace
 from shyftr.mutations import (
     active_charge_ids,
     approved_traces,
@@ -360,6 +361,46 @@ def search(
             )
         )
 
+    if _should_include_episodes(query, requested_memory_types, requested_kinds):
+        for episode in list_latest_episodes(cell):
+            if episode.status in {"proposed", "rejected", "superseded"}:
+                continue
+            if requested_kinds and episode.episode_kind not in requested_kinds:
+                continue
+            if episode.sensitivity in {"private", "secret", "restricted"}:
+                continue
+            score_parts = (episode.episode_id, episode.status, episode.episode_kind, episode.outcome or "")
+            if episode.status != "redacted":
+                score_parts = (*score_parts, episode.title or "", episode.summary or "")
+            score = _episode_score(query_terms, *score_parts)
+            if query_terms and score <= 0:
+                continue
+            results.append(
+                SearchResult(
+                    memory_id=episode.episode_id,
+                    statement=_episode_statement(episode),
+                    trust_tier="memory",
+                    kind=episode.episode_kind,
+                    memory_type="episodic",
+                    confidence=episode.confidence,
+                    score=max(score, 0.05),
+                    lifecycle_status=episode.status,
+                    selection_rationale="episode_history" if not requested_memory_types else "explicit_episodic",
+                    provenance={
+                        "episode_id": episode.episode_id,
+                        "anchors": {
+                            "live_context_entry_ids": list(episode.live_context_entry_ids),
+                            "memory_ids": list(episode.memory_ids),
+                            "feedback_ids": list(episode.feedback_ids),
+                            "resource_refs": [ref.to_dict() for ref in episode.resource_refs],
+                            "grounding_refs": list(episode.grounding_refs),
+                            "artifact_refs": list(episode.artifact_refs),
+                        },
+                        "timeframe": {"started_at": episode.started_at, "ended_at": episode.ended_at},
+                    },
+                )
+            )
+
     results.sort(key=lambda item: (-item.score, item.memory_id))
     return results[: max(top_k, 0)]
 
@@ -529,6 +570,38 @@ def _score(query_terms: set[str], trace: Trace) -> float:
     if not overlap:
         return 0.0
     return min(1.0, len(overlap) / max(len(query_terms), 1))
+
+
+def _should_include_episodes(query: str, requested_memory_types: set[str | None], requested_kinds: set[str]) -> bool:
+    if "episodic" in requested_memory_types:
+        return True
+    if requested_memory_types:
+        return False
+    if requested_kinds & set(EPISODE_KINDS):
+        return True
+    if requested_kinds:
+        return False
+    query_terms = _terms(query)
+    history_terms = {"history", "happened", "previous", "prior", "incident", "failure", "failed", "outcome", "attempt", "provenance", "last"}
+    return bool(query_terms & history_terms)
+
+
+def _episode_score(query_terms: set[str], *parts: str) -> float:
+    if not query_terms:
+        return 0.0
+    overlap = query_terms & _terms(" ".join(parts))
+    return min(1.0, len(overlap) / max(len(query_terms), 1)) if overlap else 0.0
+
+
+def _episode_statement(episode: Any) -> str:
+    timeframe = " – ".join(value for value in (episode.started_at, episode.ended_at) if value)
+    if episode.status == "redacted":
+        time_text = f" ({timeframe})" if timeframe else ""
+        return f"[redacted episode]{time_text} Outcome: {episode.outcome or 'unknown'}.".strip()
+    prefix = f"{episode.title}: " if episode.title else ""
+    suffix = f" Outcome: {episode.outcome}." if episode.outcome else ""
+    time_text = f" ({timeframe})" if timeframe else ""
+    return f"{prefix}{episode.summary or ''}{time_text}{suffix}".strip()
 
 
 def approved_traces(cell_path: PathLike) -> List[Trace]:

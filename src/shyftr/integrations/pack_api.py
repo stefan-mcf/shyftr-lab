@@ -67,6 +67,7 @@ class RuntimeLoadoutRequest:
     max_items: int = 20
     max_tokens: int = 4000
     requested_trust_tiers: List[str] = field(default_factory=list)
+    memory_types: List[str] = field(default_factory=list)
     include_fragments: bool = False
     user_id: Optional[str] = None
     project_id: Optional[str] = None
@@ -84,6 +85,7 @@ class RuntimeLoadoutRequest:
             "max_items": self.max_items,
             "max_tokens": self.max_tokens,
             "requested_trust_tiers": list(self.requested_trust_tiers),
+            "memory_types": list(self.memory_types),
             "include_fragments": self.include_fragments,
             "user_id": self.user_id,
             "project_id": self.project_id,
@@ -350,6 +352,7 @@ def process_runtime_loadout_request(request: RuntimeLoadoutRequest) -> RuntimeLo
         max_tokens=request.max_tokens,
         include_fragments=request.include_fragments,
         requested_trust_tiers=request.requested_trust_tiers if request.requested_trust_tiers else None,
+        memory_types=request.memory_types if request.memory_types else None,
         query_kind=request.task_kind,
         query_tags=request.tags if request.tags else None,
         runtime_id=request.external_system,

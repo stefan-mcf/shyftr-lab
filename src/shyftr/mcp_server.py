@@ -14,6 +14,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, TextIO
 
+from shyftr.episodes import capture_episode, make_episode, search_episode_capsules
 from shyftr.pack import LoadoutTaskInput, assemble_loadout
 from shyftr.provider.memory import profile, record_signal, remember, search
 
@@ -35,6 +36,8 @@ TOOL_NAMES = (
     "shyftr_live_context_resume",
     "shyftr_session_harvest",
     "shyftr_live_context_status",
+    "shyftr_episode_capture",
+    "shyftr_episode_search",
 )
 
 JsonArgs = str | bytes | bytearray | Mapping[str, Any]
@@ -78,6 +81,7 @@ def shyftr_pack_bridge(args: JsonArgs) -> dict[str, Any]:
         dry_run=not write,
         include_fragments=bool(payload.get("include_candidates", False)),
         requested_trust_tiers=_optional_str_list(payload.get("trust_tiers")),
+        memory_types=_optional_str_list(payload.get("memory_types")),
         query_kind=_optional_text(payload.get("kind")),
         query_tags=_optional_str_list(payload.get("tags")),
         retrieval_mode=str(payload.get("retrieval_mode") or "balanced"),
@@ -150,6 +154,58 @@ def shyftr_remember_bridge(args: JsonArgs) -> dict[str, Any]:
         "candidate_id": result.spark_id,
         "trust_tier": result.trust_tier,
         "memory_type": result.memory_type,
+    }
+
+
+def shyftr_episode_capture_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _load_payload(args)
+    cell_path = _require_cell_path(payload)
+    confidence_value = payload.get("confidence", 0.8)
+    episode = make_episode(
+        cell_path,
+        episode_id=_require_text(payload.get("episode_id"), "episode_id"),
+        episode_kind=str(payload.get("episode_kind") or "session"),
+        title=_optional_text(payload.get("title")),
+        summary=_optional_text(payload.get("summary")),
+        actor=_optional_text(payload.get("actor")),
+        action=_optional_text(payload.get("action")),
+        outcome=str(payload.get("outcome") or "unknown"),
+        status=str(payload.get("status") or "proposed"),
+        started_at=_optional_text(payload.get("started_at")),
+        ended_at=_optional_text(payload.get("ended_at")),
+        confidence=None if confidence_value is None else float(confidence_value),
+        sensitivity=str(payload.get("sensitivity") or "internal"),
+        runtime_id=_optional_text(payload.get("runtime_id")),
+        session_id=_optional_text(payload.get("session_id")),
+        task_id=_optional_text(payload.get("task_id")),
+        live_context_entry_ids=_optional_str_list(payload.get("live_context_entry_ids")) or _optional_str_list(payload.get("anchor_live_entry_ids")),
+        memory_ids=_optional_str_list(payload.get("memory_ids")),
+        feedback_ids=_optional_str_list(payload.get("feedback_ids")),
+        resource_refs=payload.get("resource_refs"),
+        grounding_refs=_optional_str_list(payload.get("grounding_refs")),
+        artifact_refs=_optional_str_list(payload.get("artifact_refs")),
+        metadata=_optional_mapping(payload.get("metadata")) or {},
+        provided_fields=list(payload.keys()),
+    )
+    result = capture_episode(cell_path, episode, write=bool(payload.get("write", False)))
+    return {"tool": "shyftr_episode_capture", "cell_path": str(cell_path), **result}
+
+
+def shyftr_episode_search_bridge(args: JsonArgs) -> dict[str, Any]:
+    payload = _load_payload(args)
+    cell_path = _require_cell_path(payload)
+    query = _require_text(payload.get("query"), "query")
+    return {
+        "tool": "shyftr_episode_search",
+        "status": "ok",
+        "cell_path": str(cell_path),
+        "query": query,
+        "results": search_episode_capsules(
+            cell_path,
+            query,
+            limit=_bounded_int(payload.get("limit", 10), "limit", minimum=0, maximum=50),
+            include_private=bool(payload.get("include_private", False)),
+        ),
     }
 
 
@@ -406,6 +462,7 @@ def create_mcp_server() -> Any:
         runtime_id: str = "mcp",
         max_items: int = 10,
         max_tokens: int = 2000,
+        memory_types: list[str] | None = None,
         write: bool = False,
     ) -> dict[str, Any]:
         return shyftr_pack_bridge(
@@ -416,6 +473,7 @@ def create_mcp_server() -> Any:
                 "runtime_id": runtime_id,
                 "max_items": max_items,
                 "max_tokens": max_tokens,
+                "memory_types": memory_types,
                 "write": write,
             }
         )
@@ -436,6 +494,75 @@ def create_mcp_server() -> Any:
         return shyftr_remember_bridge(
             {"cell_path": cell_path, "statement": statement, "kind": kind, "actor": actor, "memory_type": memory_type, "write": write}
         )
+
+    @server.tool(name="shyftr_episode_capture")
+    def shyftr_episode_capture_tool(
+        cell_path: str,
+        episode_id: str,
+        title: str | None = None,
+        summary: str | None = None,
+        actor: str | None = None,
+        action: str | None = None,
+        episode_kind: str | None = None,
+        outcome: str | None = None,
+        status: str | None = None,
+        started_at: str | None = None,
+        ended_at: str | None = None,
+        sensitivity: str | None = None,
+        confidence: float | None = None,
+        runtime_id: str | None = None,
+        session_id: str | None = None,
+        task_id: str | None = None,
+        live_context_entry_ids: list[str] | None = None,
+        anchor_live_entry_ids: list[str] | None = None,
+        memory_ids: list[str] | None = None,
+        feedback_ids: list[str] | None = None,
+        resource_refs: list[Any] | None = None,
+        grounding_refs: list[str] | None = None,
+        artifact_refs: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        write: bool = False,
+    ) -> dict[str, Any]:
+        payload = {
+            "cell_path": cell_path,
+            "episode_id": episode_id,
+            "write": write,
+        }
+        optional_values = {
+            "title": title,
+            "summary": summary,
+            "actor": actor,
+            "action": action,
+            "started_at": started_at,
+            "ended_at": ended_at,
+            "runtime_id": runtime_id,
+            "session_id": session_id,
+            "task_id": task_id,
+            "live_context_entry_ids": live_context_entry_ids,
+            "anchor_live_entry_ids": anchor_live_entry_ids,
+            "memory_ids": memory_ids,
+            "feedback_ids": feedback_ids,
+            "resource_refs": resource_refs,
+            "grounding_refs": grounding_refs,
+            "artifact_refs": artifact_refs,
+            "metadata": metadata,
+        }
+        payload.update({key: value for key, value in optional_values.items() if value is not None and value != ""})
+        if episode_kind is not None:
+            payload["episode_kind"] = episode_kind
+        if outcome is not None:
+            payload["outcome"] = outcome
+        if status is not None:
+            payload["status"] = status
+        if sensitivity is not None:
+            payload["sensitivity"] = sensitivity
+        if confidence is not None:
+            payload["confidence"] = confidence
+        return shyftr_episode_capture_bridge(payload)
+
+    @server.tool(name="shyftr_episode_search")
+    def shyftr_episode_search_tool(cell_path: str, query: str, limit: int = 10, include_private: bool = False) -> dict[str, Any]:
+        return shyftr_episode_search_bridge({"cell_path": cell_path, "query": query, "limit": limit, "include_private": include_private})
 
     @server.tool(name="shyftr_record_feedback")
     def shyftr_record_feedback_tool(
@@ -908,6 +1035,8 @@ def _handle_json_rpc_message(message: dict[str, Any]) -> dict[str, Any] | None:
                 "shyftr_live_context_resume": shyftr_live_context_resume_bridge,
                 "shyftr_session_harvest": shyftr_session_harvest_bridge,
                 "shyftr_live_context_status": shyftr_live_context_status_bridge,
+                "shyftr_episode_capture": shyftr_episode_capture_bridge,
+                "shyftr_episode_search": shyftr_episode_search_bridge,
             }
             if name not in call_map:
                 raise ValueError(f"unknown tool: {name}")
@@ -944,6 +1073,8 @@ def _tool_descriptors() -> list[dict[str, Any]]:
         _tool_descriptor("shyftr_live_context_resume", "Reconstruct deterministic advisory resume state from continuity/carry records.", ["continuity_cell_path", "session_id"]),
         _tool_descriptor("shyftr_session_harvest", "Classify session live context into review-gated harvest outputs.", ["live_cell_path", "continuity_cell_path", "memory_cell_path", "session_id"]),
         _tool_descriptor("shyftr_live_context_status", "Summarize live context ledgers for a cell.", ["cell_path"]),
+        _tool_descriptor("shyftr_episode_capture", "Capture a review-gated Episode; dry-run unless write=true.", ["cell_path", "episode_id"]),
+        _tool_descriptor("shyftr_episode_search", "Search approved first-class Episode capsules.", ["cell_path", "query"]),
     ]
 
 

@@ -48,7 +48,11 @@ Examples:
 - Compatibility readers infer a safe default class from `kind`, trust tier, or typed live-context entry kind when possible.
 - Missing `memory_type` is not itself a migration failure.
 - SQLite and other projections preserve `memory_type` when present and tolerate absence for older rows.
-- Phase 3 does not split canonical storage by class and does not rewrite historical ledgers destructively.
+
+Clarification:
+- Phase 3 introduced memory classes as a contract and retrieval concept, but did not split canonical storage by class.
+- Phase 10 may add an additive Episode ledger for first-class episodic objects (see `docs/concepts/episodic-memory-contract.md`) without rewriting older durable-memory rows.
+- Historical durable-memory rows with `memory_type='episodic'` remain readable as durable-memory rows; they are not implicitly reinterpreted as first-class Episodes.
 
 ## Write-path boundaries
 

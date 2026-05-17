@@ -394,6 +394,67 @@ def _register_routes(app: FastAPI) -> None:
                 content={"status": "error", "message": str(exc)},
             )
 
+    # -- Episode capture/search ---------------------------------------------
+
+    @app.post("/episode/capture")
+    async def episode_capture(request: Request) -> JSONResponse:
+        body = await _parse_body(request)
+        try:
+            from shyftr.episodes import capture_episode, make_episode
+
+            cell_path = body.get("cell_path")
+            if not cell_path:
+                return JSONResponse(status_code=422, content={"status": "error", "message": "cell_path is required"})
+            if not (Path(str(cell_path)) / "config" / "cell_manifest.json").exists():
+                return JSONResponse(status_code=422, content={"status": "error", "message": "cell_path must be an initialized ShyftR cell"})
+            required_text_fields = ("episode_id",)
+            missing = [field for field in required_text_fields if not str(body.get(field) or "").strip()]
+            blank_optional_text_fields = [field for field in ("title", "summary", "actor", "action") if field in body and not str(body.get(field) or "").strip()]
+            if missing or blank_optional_text_fields:
+                fields = missing + blank_optional_text_fields
+                return JSONResponse(status_code=422, content={"status": "error", "message": f"missing required fields: {', '.join(fields)}"})
+            episode = make_episode(
+                cell_path,
+                episode_id=str(body.get("episode_id")),
+                episode_kind=str(body.get("episode_kind") or "session"),
+                title=str(body["title"]) if body.get("title") is not None else None,
+                summary=str(body["summary"]) if body.get("summary") is not None else None,
+                actor=str(body["actor"]) if body.get("actor") is not None else None,
+                action=str(body["action"]) if body.get("action") is not None else None,
+                outcome=str(body.get("outcome") or "unknown"),
+                status=str(body.get("status") or "proposed"),
+                started_at=str(body["started_at"]) if body.get("started_at") is not None else None,
+                ended_at=str(body["ended_at"]) if body.get("ended_at") is not None else None,
+                confidence=body.get("confidence", 0.8),
+                sensitivity=str(body.get("sensitivity") or "internal"),
+                runtime_id=body.get("runtime_id"),
+                session_id=body.get("session_id"),
+                task_id=body.get("task_id"),
+                live_context_entry_ids=body.get("live_context_entry_ids") or body.get("anchor_live_entry_ids") or [],
+                memory_ids=body.get("memory_ids") or [],
+                feedback_ids=body.get("feedback_ids") or [],
+                resource_refs=body.get("resource_refs") or [],
+                grounding_refs=body.get("grounding_refs") or [],
+                artifact_refs=body.get("artifact_refs") or [],
+                metadata=body.get("metadata") or {},
+                provided_fields=list(body.keys()),
+            )
+            return JSONResponse(content={"tool": "episode_capture", "cell_path": str(cell_path), **capture_episode(cell_path, episode, write=bool(body.get("write", False)))})
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
+    @app.get("/episode/search")
+    async def episode_search(cell_path: str, query: str, limit: int = 10, include_private: bool = False) -> JSONResponse:
+        try:
+            from shyftr.episodes import search_episode_capsules
+
+            if not (Path(str(cell_path)) / "config" / "cell_manifest.json").exists():
+                return JSONResponse(status_code=422, content={"status": "error", "message": "cell_path must be an initialized ShyftR cell"})
+
+            return JSONResponse(content={"tool": "episode_search", "status": "ok", "cell_path": cell_path, "query": query, "results": search_episode_capsules(cell_path, query, limit=int(limit), include_private=bool(include_private))})
+        except Exception as exc:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(exc)})
+
     # -- Pack request -------------------------------------------------------
 
     @app.post("/pack")

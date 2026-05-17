@@ -92,6 +92,7 @@ class TestRuntimeLoadoutRequest:
             max_items=10,
             max_tokens=2000,
             requested_trust_tiers=["doctrine", "trace"],
+            memory_types=["episodic"],
             include_fragments=True,
         )
         assert req.task_kind == "debug"
@@ -102,6 +103,7 @@ class TestRuntimeLoadoutRequest:
         assert req.max_items == 10
         assert req.max_tokens == 2000
         assert req.requested_trust_tiers == ["doctrine", "trace"]
+        assert req.memory_types == ["episodic"]
         assert req.include_fragments is True
 
     def test_to_dict_roundtrip(self):

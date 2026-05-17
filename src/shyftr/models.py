@@ -166,6 +166,13 @@ def _validate_non_negative_counters(instance: Any) -> None:
             raise ValueError(f"{field_name} must be a non-negative integer")
 
 
+def _validate_enum(field_name: str, value: Optional[str], allowed: Sequence[str]) -> None:
+    if value is None:
+        return
+    if value not in allowed:
+        raise ValueError(f"{field_name} must be one of: {', '.join(allowed)}")
+
+
 @dataclass(frozen=True)
 class Evidence(SerializableModel):
     evidence_id: str
@@ -266,6 +273,193 @@ class ResourceRef(SerializableModel):
         span = data.get("span")
         if isinstance(span, dict):
             data["span"] = ResourceSpan.from_dict(span)
+        return super().from_dict(data)
+
+
+EPISODE_KINDS = (
+    "session",
+    "task",
+    "incident",
+    "tool_outcome",
+    "decision_context",
+    "custom",
+)
+
+EPISODE_OUTCOMES = (
+    "success",
+    "failure",
+    "partial",
+    "blocked",
+    "superseded",
+    "informational",
+    "unknown",
+)
+
+EPISODE_STATUSES = (
+    "proposed",
+    "approved",
+    "archived",
+    "redacted",
+    "superseded",
+    "rejected",
+)
+
+EPISODE_SENSITIVITIES = (
+    "public",
+    "internal",
+    "private",
+    "secret",
+    "restricted",
+)
+
+EPISODE_ANCHOR_FIELDS = (
+    "live_context_entry_ids",
+    "memory_ids",
+    "feedback_ids",
+    "resource_refs",
+    "grounding_refs",
+    "artifact_refs",
+)
+
+
+@dataclass(frozen=True)
+class Episode(SerializableModel):
+    episode_id: str
+    cell_id: str
+    episode_kind: str
+    created_at: str
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    actor: Optional[str] = None
+    action: Optional[str] = None
+    outcome: Optional[str] = None
+    status: str = "proposed"
+    memory_type: str = "episodic"
+    authority: str = "review_gated"
+    retention: str = "event_history"
+    confidence: Optional[float] = None
+    sensitivity: Optional[str] = None
+    runtime_id: Optional[str] = None
+    session_id: Optional[str] = None
+    task_id: Optional[str] = None
+    tool_name: Optional[str] = None
+    tool_action: Optional[str] = None
+    key_points: List[str] = field(default_factory=list)
+    failure_signature: Optional[str] = None
+    recovery_summary: Optional[str] = None
+    parent_episode_id: Optional[str] = None
+    related_episode_ids: List[str] = field(default_factory=list)
+    derived_memory_ids: List[str] = field(default_factory=list)
+    supersedes_episode_id: Optional[str] = None
+    superseded_by_episode_id: Optional[str] = None
+    valid_until: Optional[str] = None
+    retention_hint: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    live_context_entry_ids: List[str] = field(default_factory=list)
+    memory_ids: List[str] = field(default_factory=list)
+    feedback_ids: List[str] = field(default_factory=list)
+    resource_refs: List[ResourceRef] = field(default_factory=list)
+    grounding_refs: List[str] = field(default_factory=list)
+    artifact_refs: List[str] = field(default_factory=list)
+
+    _required_fields: ClassVar[Sequence[str]] = (
+        "episode_id",
+        "cell_id",
+        "episode_kind",
+        "created_at",
+        "status",
+        "memory_type",
+    )
+    _bounded_fields: ClassVar[Sequence[str]] = ("confidence",)
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.episode_kind not in EPISODE_KINDS:
+            raise ValueError(f"episode_kind must be one of: {', '.join(EPISODE_KINDS)}")
+        if self.status not in EPISODE_STATUSES:
+            raise ValueError(f"status must be one of: {', '.join(EPISODE_STATUSES)}")
+        if self.memory_type != "episodic":
+            raise ValueError("memory_type must be episodic")
+        if self.authority != "review_gated":
+            raise ValueError("authority must be review_gated")
+        if self.retention != "event_history":
+            raise ValueError("retention must be event_history")
+        if self.outcome is not None and self.outcome not in EPISODE_OUTCOMES:
+            raise ValueError(f"outcome must be one of: {', '.join(EPISODE_OUTCOMES)}")
+        if self.sensitivity is not None and self.sensitivity not in EPISODE_SENSITIVITIES:
+            raise ValueError(f"sensitivity must be one of: {', '.join(EPISODE_SENSITIVITIES)}")
+
+        for field_name in (
+            "key_points",
+            "related_episode_ids",
+            "derived_memory_ids",
+            "live_context_entry_ids",
+            "memory_ids",
+            "feedback_ids",
+            "grounding_refs",
+            "artifact_refs",
+        ):
+            object.__setattr__(self, field_name, _normalize_string_list(getattr(self, field_name), field_name))
+        object.__setattr__(self, "resource_refs", self._normalize_resource_refs(self.resource_refs))
+
+        if self.status == "redacted":
+            for field_name in ("title", "summary", "failure_signature", "recovery_summary"):
+                object.__setattr__(self, field_name, None)
+            object.__setattr__(self, "key_points", [])
+
+        if self.status == "approved":
+            self._validate_approved_episode()
+
+    def _validate_approved_episode(self) -> None:
+        required_for_approval = (
+            "title",
+            "summary",
+            "started_at",
+            "ended_at",
+            "actor",
+            "action",
+            "outcome",
+            "confidence",
+            "sensitivity",
+        )
+        _validate_required(self, required_for_approval)
+        for field_name in required_for_approval:
+            value = getattr(self, field_name)
+            if isinstance(value, str) and not value.strip():
+                raise ValueError(f"{field_name} is required")
+        if not any(getattr(self, field_name) for field_name in EPISODE_ANCHOR_FIELDS):
+            raise ValueError("approved episodes require at least one anchor")
+
+    @staticmethod
+    def _normalize_resource_refs(value: Any) -> List[ResourceRef]:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise ValueError("resource_refs must be a list")
+        normalized: List[ResourceRef] = []
+        for item in value:
+            if isinstance(item, ResourceRef):
+                normalized.append(item)
+            elif isinstance(item, dict):
+                normalized.append(ResourceRef.from_dict(item))
+            elif isinstance(item, str):
+                normalized.append(ResourceRef(ref_type="artifact", locator=item, label=item))
+            else:
+                raise ValueError("resource_refs entries must be ResourceRef, mapping, or string")
+        return normalized
+
+    def to_dict(self) -> Dict[str, Any]:
+        payload = super().to_dict()
+        payload["resource_refs"] = [ref.to_dict() for ref in self.resource_refs]
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "Episode":
+        data = dict(payload)
+        if "resource_refs" in data:
+            data["resource_refs"] = cls._normalize_resource_refs(data["resource_refs"])
         return super().from_dict(data)
 
 

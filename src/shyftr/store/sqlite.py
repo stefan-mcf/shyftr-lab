@@ -19,6 +19,7 @@ from ..ledger import (
     read_retrieval_affinity_events,
 )
 
+from ..episodes import list_episode_rows, list_latest_episodes
 from ..memory_classes import resolve_memory_type
 
 PathLike = Union[str, Path]
@@ -128,6 +129,31 @@ CREATE TABLE IF NOT EXISTS outcomes (
     score        REAL,
     observed_at  TEXT,
     metadata     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS episodes (
+    episode_id         TEXT NOT NULL,
+    cell_id            TEXT NOT NULL,
+    episode_kind       TEXT NOT NULL,
+    title              TEXT,
+    summary            TEXT,
+    started_at         TEXT,
+    ended_at           TEXT,
+    actor              TEXT,
+    action             TEXT,
+    outcome            TEXT,
+    status             TEXT NOT NULL,
+    memory_type        TEXT NOT NULL,
+    authority          TEXT NOT NULL,
+    retention          TEXT NOT NULL,
+    confidence         REAL,
+    sensitivity        TEXT,
+    anchors_json       TEXT,
+    relationships_json TEXT,
+    capsule_json       TEXT,
+    created_at         TEXT NOT NULL,
+    updated_at         TEXT NOT NULL,
+    PRIMARY KEY (cell_id, episode_id)
 );
 
 CREATE TABLE IF NOT EXISTS confidence_events (
@@ -368,7 +394,7 @@ def rebuild_from_cell(conn: sqlite3.Connection, cell_path: PathLike) -> None:
         "(SELECT fragment_id FROM fragments WHERE cell_id = ?)",
         (cell_id,),
     )
-    for table in ("outcomes", "retrieval_logs", "traces", "fragments", "sources",
+    for table in ("episodes", "outcomes", "retrieval_logs", "traces", "fragments", "sources",
                    "audit_reviews", "audit_sparks",
                    "retrieval_affinity_events", "confidence_events", "lifecycle_events"):
         conn.execute(f"DELETE FROM {table} WHERE cell_id = ?", (cell_id,))
@@ -394,19 +420,22 @@ def rebuild_from_cell(conn: sqlite3.Connection, cell_path: PathLike) -> None:
     # 7. Outcomes
     _rebuild_outcomes(conn, cell)
 
-    # 8. Confidence events (AL-1)
+    # 8. Episodes
+    _rebuild_episodes(conn, cell)
+
+    # 9. Confidence events (AL-1)
     _rebuild_confidence_events(conn, cell)
 
-    # 9. Retrieval affinity events (AL-1)
+    # 10. Retrieval affinity events (AL-1)
     _rebuild_retrieval_affinity_events(conn, cell)
 
-    # 10. Audit sparks (AL-1)
+    # 11. Audit sparks (AL-1)
     _rebuild_audit_sparks(conn, cell)
 
-    # 11. Audit reviews (AL-1)
+    # 12. Audit reviews (AL-1)
     _rebuild_audit_reviews(conn, cell)
 
-    # 12. Lifecycle mutation events (UMS-4)
+    # 13. Lifecycle mutation events (UMS-4)
     _rebuild_lifecycle_events(conn, cell)
 
     conn.commit()
@@ -627,6 +656,72 @@ def _rebuild_outcomes(conn: sqlite3.Connection, cell: Path) -> None:
                 record.get("observed_at"),
                 json.dumps(record.get("metadata"), sort_keys=True)
                 if record.get("metadata") is not None else None,
+            ),
+        )
+
+
+def _rebuild_episodes(conn: sqlite3.Connection, cell: Path) -> None:
+    """Rebuild latest Episode projections from ledger/episodes.jsonl."""
+    first_created_by_episode_id: dict[str, str] = {}
+    for row in list_episode_rows(cell):
+        first_created_by_episode_id.setdefault(row.episode_id, row.created_at)
+    for episode in list_latest_episodes(cell):
+        anchors = {
+            "live_context_entry_ids": episode.live_context_entry_ids,
+            "memory_ids": episode.memory_ids,
+            "feedback_ids": episode.feedback_ids,
+            "resource_refs": [ref.to_dict() for ref in episode.resource_refs],
+            "grounding_refs": episode.grounding_refs,
+            "artifact_refs": episode.artifact_refs,
+        }
+        relationships = {
+            "parent_episode_id": episode.parent_episode_id,
+            "related_episode_ids": episode.related_episode_ids,
+            "derived_memory_ids": episode.derived_memory_ids,
+            "supersedes_episode_id": episode.supersedes_episode_id,
+            "superseded_by_episode_id": episode.superseded_by_episode_id,
+        }
+        capsule = {
+            "runtime_id": episode.runtime_id,
+            "session_id": episode.session_id,
+            "task_id": episode.task_id,
+            "tool_name": episode.tool_name,
+            "tool_action": episode.tool_action,
+            "key_points": episode.key_points,
+            "failure_signature": episode.failure_signature,
+            "recovery_summary": episode.recovery_summary,
+            "valid_until": episode.valid_until,
+            "retention_hint": episode.retention_hint,
+            "metadata": episode.metadata,
+        }
+        conn.execute(
+            "INSERT OR REPLACE INTO episodes "
+            "(episode_id, cell_id, episode_kind, title, summary, started_at, ended_at, actor, action, outcome, "
+            " status, memory_type, authority, retention, confidence, sensitivity, anchors_json, relationships_json, "
+            " capsule_json, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                episode.episode_id,
+                episode.cell_id,
+                episode.episode_kind,
+                episode.title,
+                episode.summary,
+                episode.started_at,
+                episode.ended_at,
+                episode.actor,
+                episode.action,
+                episode.outcome,
+                episode.status,
+                episode.memory_type,
+                episode.authority,
+                episode.retention,
+                episode.confidence,
+                episode.sensitivity,
+                json.dumps(anchors, sort_keys=True),
+                json.dumps(relationships, sort_keys=True),
+                json.dumps(capsule, sort_keys=True),
+                first_created_by_episode_id.get(episode.episode_id, episode.created_at),
+                episode.created_at,
             ),
         )
 

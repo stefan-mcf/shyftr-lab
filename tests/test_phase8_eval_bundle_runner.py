@@ -54,6 +54,7 @@ def test_phase8_bundle_runner_emits_canonical_top_level_keys(tmp_path: Path) -> 
         "hygiene_report",
         "audit_summary",
         "frontier_snapshot",
+        "episode_contract_coverage",
         "claims_allowed",
         "claims_not_allowed",
         "paths",

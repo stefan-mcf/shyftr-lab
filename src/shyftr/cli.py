@@ -300,6 +300,7 @@ def cmd_pack(args: argparse.Namespace) -> None:
         max_items=args.max_items,
         max_tokens=args.max_tokens,
         include_fragments=args.include_fragments,
+        memory_types=args.memory_types.split(",") if args.memory_types else None,
         query_kind=args.query_kind,
         query_tags=args.query_tags.split(",") if args.query_tags else None,
         runtime_id=args.runtime_id,
@@ -322,6 +323,7 @@ def _add_pack(sub: argparse.ArgumentParser) -> None:
     sub.add_argument("--max-items", type=int, default=20, help="max items (default: 20)")
     sub.add_argument("--max-tokens", type=int, default=4000, help="max tokens (default: 4000)")
     sub.add_argument("--include-candidates", "--include-fragments", dest="include_fragments", action="store_true", default=False, help="include candidate-tier items")
+    sub.add_argument("--memory-types", type=str, default=None, help="comma-separated memory types to include (for example: episodic,semantic)")
     sub.add_argument("--query-kind", type=str, default=None, help="expected kind for kind-match scoring")
     sub.add_argument("--query-tags", type=str, default=None, help="comma-separated expected tags for tag-match")
     sub.add_argument("--runtime-id", type=str, default="default", help="runtime identity for sensitivity policy checks")
@@ -537,6 +539,130 @@ def _add_continuity(sub: argparse.ArgumentParser, *, label: str = "continuity") 
     status = continuity_sub.add_parser("status", help=f"Summarize {noun} ledgers")
     status.add_argument("continuity_cell_path", type=_cell_path, metavar="carry_cell_path" if label == "carry" else "continuity_cell_path", help=f"path to the {noun} cell")
 
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: episode
+# ---------------------------------------------------------------------------
+
+
+def cmd_episode_capture(args: argparse.Namespace) -> None:
+    from shyftr.episodes import capture_episode, make_episode
+
+    provided_fields = [
+        name
+        for name in (
+            "episode_id",
+            "title",
+            "summary",
+            "actor",
+            "action",
+            "started_at",
+            "ended_at",
+            "runtime_id",
+            "session_id",
+            "task_id",
+            "metadata",
+        )
+        if getattr(args, name, None) not in (None, "", [], {})
+    ]
+    if args.episode_kind is not None:
+        provided_fields.append("episode_kind")
+    if args.outcome is not None:
+        provided_fields.append("outcome")
+    if args.status is not None:
+        provided_fields.append("status")
+    if args.sensitivity is not None:
+        provided_fields.append("sensitivity")
+    if args.confidence is not None:
+        provided_fields.append("confidence")
+    if args.anchor_live_entry:
+        provided_fields.append("live_context_entry_ids")
+    if args.anchor_memory:
+        provided_fields.append("memory_ids")
+    if args.anchor_feedback:
+        provided_fields.append("feedback_ids")
+    if args.resource_ref:
+        provided_fields.append("resource_refs")
+    if args.grounding_ref:
+        provided_fields.append("grounding_refs")
+    if args.artifact_ref:
+        provided_fields.append("artifact_refs")
+
+    episode = make_episode(
+        args.cell_path,
+        episode_id=args.episode_id,
+        episode_kind=args.episode_kind or "session",
+        title=args.title,
+        summary=args.summary,
+        actor=args.actor,
+        action=args.action,
+        outcome=args.outcome or "unknown",
+        status=args.status or "proposed",
+        started_at=args.started_at,
+        ended_at=args.ended_at,
+        confidence=args.confidence if args.confidence is not None else 0.8,
+        sensitivity=args.sensitivity or "internal",
+        runtime_id=args.runtime_id,
+        session_id=args.session_id,
+        task_id=args.task_id,
+        live_context_entry_ids=args.anchor_live_entry or [],
+        memory_ids=args.anchor_memory or [],
+        feedback_ids=args.anchor_feedback or [],
+        resource_refs=args.resource_ref or [],
+        grounding_refs=args.grounding_ref or [],
+        artifact_refs=args.artifact_ref or [],
+        metadata=json.loads(args.metadata) if args.metadata else {},
+        provided_fields=provided_fields,
+    )
+    _print_json(capture_episode(args.cell_path, episode, write=bool(args.write)))
+
+
+def cmd_episode_search(args: argparse.Namespace) -> None:
+    from shyftr.episodes import search_episode_capsules
+
+    _print_json({
+        "status": "ok",
+        "cell_path": str(args.cell_path),
+        "query": args.query,
+        "results": search_episode_capsules(args.cell_path, args.query, limit=args.limit, include_private=bool(args.include_private)),
+    })
+
+
+def _add_episode(sub: argparse.ArgumentParser) -> None:
+    episode_sub = sub.add_subparsers(dest="episode_action", required=True)
+
+    capture = episode_sub.add_parser("capture", help="Capture a review-gated Episode; dry-run unless --write is set")
+    capture.add_argument("cell_path", type=_cell_path, help="path to the memory Cell directory")
+    capture.add_argument("--episode-id", required=True, type=str, help="stable episode identifier")
+    capture.add_argument("--episode-kind", default=None, choices=("session", "task", "incident", "tool_outcome", "decision_context", "custom"), help="episode subtype")
+    capture.add_argument("--title", default=None, type=str, help="short episode title (required before approval)")
+    capture.add_argument("--summary", default=None, type=str, help="sensitivity-safe episode summary (required before approval)")
+    capture.add_argument("--actor", default=None, type=str, help="runtime/operator/tool actor (required before approval)")
+    capture.add_argument("--action", default=None, type=str, help="attempted or observed action (required before approval)")
+    capture.add_argument("--outcome", default=None, choices=("success", "failure", "partial", "blocked", "superseded", "informational", "unknown"), help="episode outcome")
+    capture.add_argument("--status", default=None, choices=("proposed", "approved", "archived", "redacted", "superseded", "rejected"), help="episode lifecycle status")
+    capture.add_argument("--started-at", default=None, type=str, help="episode start timestamp")
+    capture.add_argument("--ended-at", default=None, type=str, help="episode end timestamp")
+    capture.add_argument("--confidence", default=None, type=float, help="confidence between 0 and 1")
+    capture.add_argument("--sensitivity", default=None, choices=("public", "internal", "private", "secret", "restricted"), help="episode sensitivity")
+    capture.add_argument("--runtime-id", default=None, type=str, help="optional runtime id")
+    capture.add_argument("--session-id", default=None, type=str, help="optional session id")
+    capture.add_argument("--task-id", default=None, type=str, help="optional task id")
+    capture.add_argument("--anchor-live-entry", action="append", default=[], help="live-context entry anchor (repeatable)")
+    capture.add_argument("--anchor-memory", action="append", default=[], help="memory anchor (repeatable)")
+    capture.add_argument("--anchor-feedback", action="append", default=[], help="feedback anchor (repeatable)")
+    capture.add_argument("--resource-ref", action="append", default=[], help="resource reference anchor (repeatable)")
+    capture.add_argument("--grounding-ref", action="append", default=[], help="grounding reference (repeatable)")
+    capture.add_argument("--artifact-ref", action="append", default=[], help="artifact reference (repeatable)")
+    capture.add_argument("--metadata", type=str, default=None, help="optional JSON metadata")
+    capture.add_argument("--write", action="store_true", default=False, help="append episode ledger after review")
+
+    search_parser = episode_sub.add_parser("search", help="Search approved Episode capsules")
+    search_parser.add_argument("cell_path", type=_cell_path, help="path to the memory Cell directory")
+    search_parser.add_argument("query", type=str, help="episode-history query")
+    search_parser.add_argument("--limit", type=int, default=10, help="maximum episode capsules")
+    search_parser.add_argument("--include-private", action="store_true", default=False, help="include private/sensitive capsules for local audit use")
 
 
 # ---------------------------------------------------------------------------
@@ -1715,6 +1841,12 @@ def _resolve_subcommand(args: argparse.Namespace) -> None:
             return cmd_continuity_status(args)
         _fail(f"unknown continuity action: {args.continuity_action}")
 
+    if cmd_name == "episode":
+        return {
+            "capture": cmd_episode_capture,
+            "search": cmd_episode_search,
+        }[args.episode_action](args)
+
     if cmd_name == "live-context":
         return {
             "capture": cmd_live_context_capture,
@@ -1882,6 +2014,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_serve(sub.add_parser("serve", help="Start the optional local HTTP service"))
     _add_continuity(sub.add_parser("carry", help="Short alias: opt-in runtime carry packs and feedback"), label="carry")
     _add_continuity(sub.add_parser("continuity", help="Compatibility alias: opt-in runtime carry packs and feedback"))
+    _add_episode(sub.add_parser("episode", help="Capture and search first-class Episode objects"))
     _add_live_context(sub.add_parser("live-context", help="Capture, pack, and harvest live context"))
 
     return parser

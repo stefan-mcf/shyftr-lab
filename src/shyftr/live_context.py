@@ -18,8 +18,10 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 import uuid
 
+from .episodes import get_latest_episode, propose_episode
 from .ledger import append_jsonl, read_jsonl
 from .memory_classes import resolve_memory_type
+from .models import Episode
 from .pack import estimate_tokens
 
 PathLike = Union[str, Path]
@@ -547,6 +549,7 @@ class SessionHarvestReport:
     skill_proposal_count: int
     direct_durable_memory_writes: int
     generated_at: str
+    episode_proposal_count: int = 0
     review_gated: bool = True
     carry_state_checkpoint: Optional[Dict[str, Any]] = None
 
@@ -563,6 +566,7 @@ class SessionHarvestReport:
             "continuity_improvement_proposal_count": self.continuity_improvement_proposal_count,
             "skill_proposal_count": self.skill_proposal_count,
             "direct_durable_memory_writes": self.direct_durable_memory_writes,
+            "episode_proposal_count": self.episode_proposal_count,
             "generated_at": self.generated_at,
             "review_gated": self.review_gated,
             "carry_state_checkpoint": dict(self.carry_state_checkpoint or {}),
@@ -822,11 +826,13 @@ def harvest_session(request: SessionHarvestRequest) -> SessionHarvestReport:
         )
     )
     decisions = [_classify_entry(entry, allow_direct=request.allow_direct_durable_memory) for entry in entries]
+    episode_proposals = _episode_proposals_from_entries(request, entries)
     bucket_counts = {bucket: 0 for bucket in HARVEST_BUCKETS}
     for decision in decisions:
         bucket_counts[decision.bucket] += 1
+    harvest_fingerprint = hashlib.sha256("\n".join(str(entry.get("entry_id") or "") for entry in entries).encode("utf-8")).hexdigest()[:12]
     report = SessionHarvestReport(
-        harvest_id=f"session-harvest-{request.runtime_id}-{request.session_id}",
+        harvest_id=f"session-harvest-{request.runtime_id}-{request.session_id}-{harvest_fingerprint}",
         runtime_id=request.runtime_id,
         session_id=request.session_id,
         status="dry_run" if not request.write else "ok",
@@ -838,6 +844,7 @@ def harvest_session(request: SessionHarvestRequest) -> SessionHarvestReport:
         skill_proposal_count=bucket_counts["skill_proposal"],
         direct_durable_memory_writes=0,
         generated_at=_now(),
+        episode_proposal_count=len(episode_proposals),
         carry_state_checkpoint=checkpoint.to_dict(),
     )
     if not request.write:
@@ -845,6 +852,11 @@ def harvest_session(request: SessionHarvestRequest) -> SessionHarvestReport:
     if _harvest_already_written(live_cell, report.harvest_id):
         return report
     append_jsonl(live_cell / "ledger" / "session_harvests.jsonl", report.to_dict())
+    for episode in episode_proposals:
+        latest = get_latest_episode(memory_cell, episode.episode_id)
+        if latest is not None and latest.status != "proposed":
+            continue
+        propose_episode(memory_cell, episode)
     for decision in decisions:
         if decision.bucket in {"memory_candidate", "direct_durable_memory", "skill_proposal", "continuity_feedback"}:
             proposal = _proposal_from_decision(report, decision, entries)
@@ -985,6 +997,138 @@ def _proposal_from_decision(report: SessionHarvestReport, decision: HarvestDecis
         "review_gated": True,
         "created_at": report.generated_at,
     }
+
+
+def _episode_proposals_from_entries(request: SessionHarvestRequest, entries: Sequence[Mapping[str, Any]]) -> List[Episode]:
+    material = [entry for entry in entries if str(entry.get("retention_hint") or "") in {"archive", "session", "durable"} and str(entry.get("status") or "") in {"completed", "resolved", "failed", "blocked", "archived", "superseded"}]
+    incident_entries = [entry for entry in material if str(entry.get("entry_kind") or "") in {"error", "recovery"}]
+    proposals: List[Episode] = []
+    if material:
+        proposals.append(_session_episode_from_entries(request, material))
+    if any(str(entry.get("entry_kind") or "") == "error" for entry in incident_entries) and any(str(entry.get("entry_kind") or "") == "recovery" for entry in incident_entries):
+        proposals.append(_incident_episode_from_entries(request, incident_entries))
+    return proposals
+
+
+def _session_episode_from_entries(request: SessionHarvestRequest, entries: Sequence[Mapping[str, Any]]) -> Episode:
+    entry_ids = [str(entry["entry_id"]) for entry in entries if entry.get("entry_id")]
+    sensitivity = _max_sensitivity(entries)
+    return Episode(
+        episode_id=f"episode-session-{request.runtime_id}-{request.session_id}",
+        cell_id=_read_cell_id(_require_cell(request.memory_cell_path, "memory_cell_path")),
+        episode_kind="session",
+        title=f"Session {request.session_id} harvested",
+        summary=_episode_summary(entries),
+        started_at=str(entries[0].get("created_at") or _now()),
+        ended_at=str(entries[-1].get("created_at") or _now()),
+        actor=request.runtime_id,
+        action="session_harvest",
+        outcome=_episode_outcome(entries),
+        status="proposed",
+        memory_type="episodic",
+        confidence=min(0.82, max(float(entry.get("confidence") or 0.72) for entry in entries)),
+        sensitivity=sensitivity,
+        created_at=_now(),
+        runtime_id=request.runtime_id,
+        session_id=request.session_id,
+        task_id=str(entries[-1].get("task_id") or "session"),
+        key_points=[str(entry.get("content") or "")[:160] for entry in entries[:5] if entry.get("content")],
+        live_context_entry_ids=entry_ids,
+        grounding_refs=_combined_refs(entries, "grounding_refs"),
+        artifact_refs=_artifact_refs(entries),
+        metadata={"harvest_bridge": "session", "entry_count": len(entries)},
+    )
+
+
+def _incident_episode_from_entries(request: SessionHarvestRequest, entries: Sequence[Mapping[str, Any]]) -> Episode:
+    entry_ids = [str(entry["entry_id"]) for entry in entries if entry.get("entry_id")]
+    return Episode(
+        episode_id=f"episode-incident-{request.runtime_id}-{request.session_id}",
+        cell_id=_read_cell_id(_require_cell(request.memory_cell_path, "memory_cell_path")),
+        episode_kind="incident",
+        title=f"Incident/recovery cluster for {request.session_id}",
+        summary=_episode_summary(entries),
+        started_at=str(entries[0].get("created_at") or _now()),
+        ended_at=str(entries[-1].get("created_at") or _now()),
+        actor=request.runtime_id,
+        action="session_harvest_incident_cluster",
+        outcome=_incident_outcome(entries),
+        status="proposed",
+        memory_type="episodic",
+        confidence=0.78,
+        sensitivity=_max_sensitivity(entries),
+        created_at=_now(),
+        runtime_id=request.runtime_id,
+        session_id=request.session_id,
+        task_id=str(entries[-1].get("task_id") or "session"),
+        key_points=[str(entry.get("content") or "")[:160] for entry in entries[:5] if entry.get("content")],
+        live_context_entry_ids=entry_ids,
+        grounding_refs=_combined_refs(entries, "grounding_refs"),
+        artifact_refs=_artifact_refs(entries),
+        metadata={"harvest_bridge": "incident", "entry_count": len(entries)},
+    )
+
+
+def _episode_summary(entries: Sequence[Mapping[str, Any]]) -> str:
+    excerpts = [str(entry.get("content") or "").strip() for entry in entries if str(entry.get("content") or "").strip()]
+    return " | ".join(excerpt[:180] for excerpt in excerpts[:3])[:600] or "Session harvest episode proposal."
+
+
+def _episode_outcome(entries: Sequence[Mapping[str, Any]]) -> str:
+    terminal = [str(entry.get("status") or "") for entry in entries if str(entry.get("status") or "") in {"completed", "resolved", "failed", "blocked", "superseded"}]
+    if not terminal:
+        return "informational"
+    latest_status = terminal[-1]
+    if latest_status in {"completed", "resolved"}:
+        return "success"
+    if latest_status == "failed":
+        return "failure"
+    if latest_status == "blocked":
+        return "blocked"
+    if latest_status == "superseded":
+        return "superseded"
+    return "informational"
+
+
+def _incident_outcome(entries: Sequence[Mapping[str, Any]]) -> str:
+    recovery_statuses = [str(entry.get("status") or "") for entry in entries if str(entry.get("entry_kind") or "") == "recovery"]
+    if any(status in {"completed", "resolved"} for status in recovery_statuses):
+        return "partial"
+    if any(status == "blocked" for status in recovery_statuses):
+        return "blocked"
+    return "failure"
+
+
+def _max_sensitivity(entries: Sequence[Mapping[str, Any]]) -> str:
+    order = {"public": 0, "internal": 1, "private": 2, "secret": 3, "restricted": 4, "sensitive": 3}
+    canonical = {"sensitive": "secret"}
+    value = "internal"
+    for entry in entries:
+        candidate = str(entry.get("sensitivity_hint") or "internal")
+        candidate = canonical.get(candidate, candidate)
+        if order.get(candidate, 1) > order.get(value, 1):
+            value = candidate
+    return value
+
+
+def _combined_refs(entries: Sequence[Mapping[str, Any]], key: str) -> List[str]:
+    refs: List[str] = []
+    for entry in entries:
+        for value in entry.get(key) or []:
+            text = str(value)
+            if text and text not in refs:
+                refs.append(text)
+    return refs
+
+
+def _artifact_refs(entries: Sequence[Mapping[str, Any]]) -> List[str]:
+    refs = _combined_refs(entries, "evidence_refs")
+    for entry in entries:
+        if str(entry.get("entry_kind") or "") == "artifact_ref" and entry.get("source_ref"):
+            source_ref = str(entry["source_ref"])
+            if source_ref not in refs:
+                refs.append(source_ref)
+    return refs
 
 
 def _entries_for_session(cell: Path, runtime_id: str, session_id: str) -> List[Dict[str, Any]]:

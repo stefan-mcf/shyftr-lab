@@ -120,6 +120,72 @@ def _frontier_snapshot(cell_path: Path) -> Dict[str, Any]:
     }
 
 
+def _has_episode_anchor(episode: Any) -> bool:
+    return any(
+        [
+            bool(getattr(episode, "live_context_entry_ids", [])),
+            bool(getattr(episode, "memory_ids", [])),
+            bool(getattr(episode, "feedback_ids", [])),
+            bool(getattr(episode, "resource_refs", [])),
+            bool(getattr(episode, "grounding_refs", [])),
+            bool(getattr(episode, "artifact_refs", [])),
+        ]
+    )
+
+
+def _bucket_counts(values: Sequence[str]) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    for value in values:
+        key = str(value or "unknown")
+        counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _episode_contract_coverage(cell_path: Path) -> Dict[str, Any]:
+    from shyftr.episodes import list_episode_rows, list_latest_episodes
+
+    ledger_rows = list_episode_rows(cell_path)
+    latest_rows = list_latest_episodes(cell_path)
+    latest_with_anchor = sum(1 for episode in latest_rows if _has_episode_anchor(episode))
+    approved_latest = [episode for episode in latest_rows if episode.status == "approved"]
+    approved_with_anchor = sum(1 for episode in approved_latest if _has_episode_anchor(episode))
+    private_or_sensitive = sum(1 for episode in latest_rows if episode.sensitivity in {"private", "secret", "restricted"})
+
+    return {
+        "schema_version": "shyftr-episode-contract-coverage/v1",
+        "cell_path": str(cell_path),
+        "ledger_event_count": len(ledger_rows),
+        "latest_episode_count": len(latest_rows),
+        "ledger_status_counts": _bucket_counts([str(episode.status or "unknown") for episode in ledger_rows]),
+        "latest_status_counts": _bucket_counts([str(episode.status or "unknown") for episode in latest_rows]),
+        "latest_episode_kind_counts": _bucket_counts([str(episode.episode_kind or "unknown") for episode in latest_rows]),
+        "latest_sensitivity_counts": _bucket_counts([str(episode.sensitivity or "unknown") for episode in latest_rows]),
+        "anchor_completeness": {
+            "latest_with_anchor": latest_with_anchor,
+            "latest_missing_anchor": len(latest_rows) - latest_with_anchor,
+            "approved_with_anchor": approved_with_anchor,
+            "approved_missing_anchor": len(approved_latest) - approved_with_anchor,
+        },
+        "privacy_posture": {
+            "private_or_sensitive_latest": private_or_sensitive,
+            "public_capsule_redaction_required": private_or_sensitive > 0,
+        },
+        "task_success_lift": {
+            "status": "unmeasured",
+            "reason": "Phase 10 evaluation reports Episode contract coverage only; no task-success benchmark was added.",
+        },
+        "claims_allowed": [
+            "episode contract coverage counts",
+            "episode lifecycle and anchor completeness checks",
+            "episode sensitivity bucket checks",
+        ],
+        "claims_not_allowed": [
+            "task-success lift from episodes",
+            "frontier performance improvement from episodes",
+        ],
+    }
+
+
 def build_bundle(cell_path: Path, *, output_dir: Path, manifest_commands: List[Dict[str, Any]]) -> Dict[str, Any]:
     from shyftr.audit import audit_summary
     from shyftr.metrics import metrics_summary
@@ -147,6 +213,7 @@ def build_bundle(cell_path: Path, *, output_dir: Path, manifest_commands: List[D
         "hygiene_report": hygiene_report(cell_path),
         "audit_summary": audit_summary(cell_path),
         "frontier_snapshot": _frontier_snapshot(cell_path),
+        "episode_contract_coverage": _episode_contract_coverage(cell_path),
         "claims_allowed": [
             "local-first evaluation bundle",
             "deterministic proxy metrics (local evidence only)",
