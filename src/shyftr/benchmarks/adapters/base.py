@@ -20,6 +20,16 @@ class AdapterCostLatencyStats:
         }
 
 
+class AdapterSkip(RuntimeError):
+    """Adapter-declared skip.
+
+    Raised by adapters when an optional dependency is missing or a backend is
+    intentionally not runnable in the current environment.
+
+    The runner should treat this as status='skipped' rather than 'failed'.
+    """
+
+
 class BackendAdapter(Protocol):
     """Neutral adapter interface for memory backends used by benchmarks."""
 
@@ -44,4 +54,4 @@ class BackendAdapter(Protocol):
         ...
 
 
-__all__ = ["BackendAdapter", "AdapterCostLatencyStats"]
+__all__ = ["BackendAdapter", "AdapterCostLatencyStats", "AdapterSkip"]

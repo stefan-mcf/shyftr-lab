@@ -10,7 +10,7 @@ from shyftr.benchmarks.runner import run_fixture_benchmark
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-1).")
+    parser = argparse.ArgumentParser(description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-2).")
     parser.add_argument("--run-id", default="local-dev", help="Run identifier written into the report.")
     parser.add_argument(
         "--output",
@@ -22,6 +22,11 @@ def main() -> int:
         "--include-retrieval-details",
         action="store_true",
         help="Include public-safe retrieval details in report (default false for smaller artifacts).",
+    )
+    parser.add_argument(
+        "--include-mem0-oss",
+        action="store_true",
+        help="Include the optional mem0 OSS/local backend adapter (default: off; skipped if mem0 not installed).",
     )
 
     args = parser.parse_args()
@@ -38,6 +43,12 @@ def main() -> int:
         ShyftRBackendAdapter(cell_root=cell_root, cell_id="bench-cell"),
         NoMemoryBackendAdapter(),
     ]
+
+    if bool(args.include_mem0_oss):
+        # Import is local to keep optional dependency out of default path.
+        from shyftr.benchmarks.adapters.mem0_backend import Mem0OSSBackendAdapter
+
+        adapters.append(Mem0OSSBackendAdapter())
 
     run_fixture_benchmark(
         fixture=fixture,

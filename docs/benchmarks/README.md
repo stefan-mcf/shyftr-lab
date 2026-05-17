@@ -35,3 +35,23 @@ The runner refuses to write reports outside of:
 - `tmp/`
 
 This is intended to reduce accidental side effects during local benchmark development.
+
+## P11-2: mem0 OSS/local adapter (optional)
+
+This harness can optionally include a mem0 OSS/local adapter.
+
+Notes:
+
+- This is NOT mem0 Cloud. Cloud/API-key flows are intentionally out-of-scope for the default public harness path.
+- The mem0 OSS adapter is opt-in via a flag.
+- If the mem0 Python package is not installed, the backend is reported as status `skipped` (not failed).
+
+Run with mem0 OSS enabled:
+
+```bash
+PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
+  --run-id local-dev \
+  --output artifacts/benchmarks/memory_report.json \
+  --top-k 10 \
+  --include-mem0-oss
+```

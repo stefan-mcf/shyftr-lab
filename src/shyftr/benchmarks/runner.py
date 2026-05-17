@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from shyftr.benchmarks.adapters.base import BackendAdapter
+from shyftr.benchmarks.adapters.base import AdapterSkip, BackendAdapter
 from shyftr.benchmarks.fixture import BenchmarkFixture
 from shyftr.benchmarks.report import BackendResult, BenchmarkReport, REPORT_SCHEMA_VERSION, utc_now_iso
 from shyftr.benchmarks.types import RetrievalItem, SearchOutput
@@ -160,7 +160,7 @@ def run_fixture_benchmark(
     top_k_values: Sequence[int] = (10,),
     include_retrieval_details: bool = True,
     runner_name: str = "run_memory_benchmark.py",
-    runner_version: str = "phase11-p11-1",
+    runner_version: str = "phase11-p11-2",
     command_argv: Optional[List[str]] = None,
 ) -> BenchmarkReport:
     fairness = HarnessFairnessConfig(top_k_values=list(top_k_values)).to_dict()
@@ -204,8 +204,8 @@ def run_fixture_benchmark(
         fairness=fairness,
         models=models,
         limitations=[
-            "P11-1 synthetic fixture only; not a task-success benchmark.",
-            "Answerer/judge are disabled in P11-1; only retrieval contract is exercised.",
+            "P11-2 synthetic fixture only; not a task-success benchmark.",
+            "Answerer/judge are disabled in P11-2; only retrieval and adapter-status contracts are exercised.",
         ],
         claims_allowed=[
             "This report records a fixture-safe retrieval run under a pinned harness configuration.",
@@ -262,6 +262,22 @@ def run_fixture_benchmark(
                 errors=[],
             )
             report.backend_results.append(backend_result)
+        except AdapterSkip as exc:
+            report.backend_results.append(
+                BackendResult(
+                    backend_name=backend_name,
+                    status="skipped",
+                    status_reason=str(exc),
+                    config_summary={"backend_name": backend_name},
+                    ingest={},
+                    search={},
+                    metrics={},
+                    retrieval_details=None,
+                    cost_latency={},
+                    control_audit={},
+                    errors=[],
+                )
+            )
         except Exception as exc:  # pragma: no cover
             report.backend_results.append(
                 BackendResult(
@@ -288,7 +304,7 @@ def run_fixture_benchmark(
     # Aggregate: minimal cross-backend metric summary
     report.aggregate_metrics = {
         "backends": [r.backend_name for r in report.backend_results],
-        "note": "Aggregate metrics are intentionally minimal in P11-1.",
+        "note": "Aggregate metrics are intentionally minimal in P11-2.",
     }
 
     safe_path = _safe_write_path(output_path, repo_root=repo_root)
