@@ -3,11 +3,23 @@
 Date: 2026-05-18
 Repo: `/Users/stefan/ShyftR`
 Starting HEAD: `db911a1` (`docs: mark phase 12 ci green`)
-Status: P13-0/P13-1/P13-2 complete locally; ready for commit-prep and CI verification.
+Status: P13-0/P13-1/P13-2 complete, committed, pushed, and CI-green.
 
 ## Current truth
 
-Phase 12 is complete, committed, pushed, and CI-green. Phase 13 P13-0 through P13-2 are now complete locally but not committed.
+Phase 12 is complete, committed, pushed, and CI-green. Phase 13 P13-0 through P13-2 are complete, committed, pushed, and CI-green.
+
+Implementation commit:
+
+```text
+41038e1 feat: complete phase 13 benchmark readiness
+```
+
+CI run:
+
+```text
+26003288601 success
+```
 
 Canonical closeouts:
 
