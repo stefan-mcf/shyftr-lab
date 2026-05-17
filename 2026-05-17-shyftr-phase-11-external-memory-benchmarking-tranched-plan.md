@@ -219,6 +219,18 @@ After retry accounting, add the first standard-dataset mapping layer without dow
 
 This tranche does not download LOCOMO, LongMemEval, or BEAM and does not support broad performance claims.
 
+### P11-4e: LOCOMO local conversion helper
+
+After the mapping layer, add an operator-triggered conversion helper:
+
+- script accepts local normalized LOCOMO-style JSON/JSONL input only;
+- no automatic download or default third-party dataset path;
+- output is guarded to repo-local `artifacts/`, `reports/`, or `tmp/` directories;
+- private or unknown input requires explicit `--allow-private-input`;
+- public-safe output requires `contains_private_data: false` plus `--public-output`.
+
+This tranche remains a local conversion utility, not a full LOCOMO run.
+
 ### P11-4: Larger benchmark expansion
 
 Deliverables:

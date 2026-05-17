@@ -7,6 +7,7 @@ import pytest
 
 from shyftr.benchmarks.fixture import resolve_benchmark_fixture
 from shyftr.benchmarks.locomo_standard import load_locomo_standard_json, map_locomo_standard_payload
+from scripts.convert_locomo_standard_fixture import convert_locomo_standard_file
 
 
 def _locomo_standard_payload(*, contains_private_data: bool = False) -> dict[str, object]:
@@ -89,3 +90,46 @@ def test_resolver_loads_locomo_standard_format_from_explicit_path(tmp_path: Path
 def test_locomo_standard_name_requires_explicit_path() -> None:
     with pytest.raises(ValueError, match="requires --fixture-path"):
         resolve_benchmark_fixture(fixture_name="locomo-standard")
+
+
+def test_converter_writes_guarded_public_fixture(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    input_path = tmp_path / "locomo-standard.json"
+    output_path = repo_root / "artifacts" / "benchmarks" / "converted.fixture.json"
+    input_path.write_text(json.dumps(_locomo_standard_payload()), encoding="utf-8")
+
+    written = convert_locomo_standard_file(input_path, output_path, repo_root=repo_root, public_output=True)
+    payload = json.loads(written.read_text(encoding="utf-8"))
+
+    assert written == output_path.resolve()
+    assert payload["schema_version"] == "shyftr-memory-benchmark-fixture/v0"
+    assert payload["dataset_name"] == "locomo-standard"
+    assert payload["contains_private_data"] is False
+    assert payload["questions"][0]["expected_item_ids"] == ["turn-1"]
+
+
+def test_converter_rejects_private_input_without_override(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    input_path = tmp_path / "locomo-standard.json"
+    output_path = repo_root / "tmp" / "converted.fixture.json"
+    input_path.write_text(json.dumps(_locomo_standard_payload(contains_private_data=True)), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="allow-private-input"):
+        convert_locomo_standard_file(input_path, output_path, repo_root=repo_root)
+
+    written = convert_locomo_standard_file(input_path, output_path, repo_root=repo_root, allow_private_input=True)
+    payload = json.loads(written.read_text(encoding="utf-8"))
+    assert payload["contains_private_data"] is True
+
+
+def test_converter_rejects_output_outside_guarded_dirs(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    input_path = tmp_path / "locomo-standard.json"
+    output_path = repo_root / "fixtures" / "converted.fixture.json"
+    input_path.write_text(json.dumps(_locomo_standard_payload()), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="outside repo-local"):
+        convert_locomo_standard_file(input_path, output_path, repo_root=repo_root, public_output=True)

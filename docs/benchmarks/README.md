@@ -61,9 +61,15 @@ P11-4d LOCOMO-standard mapping layer:
 - `--fixture-format locomo-standard` maps a normalized local LOCOMO-style JSON file into the Phase 11 fixture contract.
 - No dataset is downloaded by the runner, and full LOCOMO claims remain disallowed.
 
+P11-4e LOCOMO local conversion helper:
+
+- `scripts/convert_locomo_standard_fixture.py` converts operator-provided local normalized LOCOMO-style JSON/JSONL into guarded fixture JSON.
+- The helper writes only under `artifacts/`, `reports/`, or `tmp/` and requires `.json` output.
+- Private or unknown input requires `--allow-private-input`; public-safe output requires `--public-output` plus `contains_private_data: false`.
+
 Output write safety:
 
-The runner refuses to write reports outside of:
+The runner and local conversion helper refuse to write reports or converted fixtures outside of:
 
 - `artifacts/`
 - `reports/`
