@@ -5,7 +5,7 @@ Status: Phase 11 harness docs. No benchmark result claim is made by this folder.
 ## P11-1: fixture-safe adapter harness
 
 This repo includes a minimal, fixture-safe harness for exercising the Phase 11 adapter contract.
-It starts with a synthetic fixture and adds a tiny public-safe LOCOMO-mini shaped fixture (P11-3).
+It starts with a synthetic fixture, adds a tiny public-safe LOCOMO-mini shaped fixture (P11-3), and now reports retrieval metrics at multiple top-k cutoffs from one fair ranked-list call per question (P11-4a).
 
 Key constraints:
 
@@ -23,7 +23,7 @@ Run locally:
 PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
   --run-id local-dev \
   --output artifacts/benchmarks/memory_report.json \
-  --top-k 10 \
+  --top-k 1,3,10 \
   --include-retrieval-details
 ```
 
@@ -36,6 +36,12 @@ PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
   --output artifacts/benchmarks/locomo_mini_report.json \
   --top-k 10
 ```
+
+P11-4a multi-cutoff readiness:
+
+- `--top-k` accepts a single integer or comma-separated cutoffs such as `1,3,10`.
+- The runner queries each backend once at the maximum requested k, then computes `metrics.retrieval_by_k` for every configured cutoff.
+- Reports include `cost_latency.summary` per successful backend and an aggregate timeout summary. Timeout enforcement remains reported-only until a later larger-run tranche adds hard cancellation.
 
 Output write safety:
 

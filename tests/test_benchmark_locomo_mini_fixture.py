@@ -51,7 +51,7 @@ def test_locomo_mini_fixture_run_shyftr_beats_no_memory(tmp_path: Path) -> None:
         run_id="locomo-mini",
         output_path=out_path,
         repo_root=repo_root,
-        top_k_values=[5],
+        top_k_values=[1, 3, 5],
         include_retrieval_details=False,
         runner_name="pytest",
         command_argv=["pytest"],
@@ -62,6 +62,14 @@ def test_locomo_mini_fixture_run_shyftr_beats_no_memory(tmp_path: Path) -> None:
 
     assert by_name["shyftr"]["status"] == "ok"
     assert by_name["no-memory"]["status"] == "ok"
+    assert payload["fairness"]["top_k_values"] == [1, 3, 5]
+    assert by_name["shyftr"]["search"]["top_k"] == 5
+    assert by_name["shyftr"]["search"]["top_k_values"] == [1, 3, 5]
+    assert set(by_name["shyftr"]["metrics"]["retrieval_by_k"]) == {"1", "3", "5"}
+    assert by_name["shyftr"]["metrics"]["retrieval"] == by_name["shyftr"]["metrics"]["retrieval_by_k"]["5"]
+    assert by_name["shyftr"]["cost_latency"]["summary"]["search_count"] == len(fixture.questions)
+    assert payload["aggregate_metrics"]["backend_status_counts"]["ok"] == 2
+    assert payload["aggregate_metrics"]["timeout_summary"]["timeout_seconds"] == 60
 
     # No-memory should have no relevant retrieval on this fixture.
     assert by_name["no-memory"]["metrics"]["retrieval"]["recall_at_k"] == 0.0

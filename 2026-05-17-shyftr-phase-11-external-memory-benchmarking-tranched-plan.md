@@ -174,6 +174,18 @@ Done means:
 - limitations are explicit;
 - no broad winner claim appears.
 
+### P11-4a: Multi-cutoff and run-summary readiness
+
+Before larger dataset adapters, land the report mechanics needed by those runs:
+
+- comma-separated top-k cutoffs in the CLI;
+- one backend search per question at the largest requested k;
+- `retrieval_by_k` metrics computed from the same ranked list;
+- per-backend cost/latency summaries;
+- aggregate backend status and timeout summaries.
+
+This tranche still uses only fixture-safe datasets and does not download LOCOMO, LongMemEval, or BEAM.
+
 ### P11-4: Larger benchmark expansion
 
 Deliverables:

@@ -71,7 +71,7 @@ def _token_estimate(text: str) -> int:
 
 
 def _compute_retrieval_metrics(search_outputs: Sequence[SearchOutput], expected_item_ids: Dict[str, List[str]], *, k: int) -> Dict[str, Any]:
-    # Simple, fixture-safe retrieval metrics for P11-1.
+    # Simple, fixture-safe retrieval metrics for Phase 11.
     # - relevance is binary by expected_item_ids match on item_id
     # - If expected_item_ids missing, skip metrics for that question.
 
@@ -113,6 +113,61 @@ def _compute_retrieval_metrics(search_outputs: Sequence[SearchOutput], expected_
         "recall_at_k": recall_sum / total_questions,
         "precision_at_k": precision_sum / total_questions,
         "mrr": mrr_sum / total_questions,
+    }
+
+
+def _normalize_top_k_values(top_k_values: Sequence[int]) -> List[int]:
+    """Return positive, de-duplicated k values while preserving caller order."""
+
+    normalized: List[int] = []
+    for raw in top_k_values:
+        k = int(raw)
+        if k < 1:
+            raise ValueError(f"top-k values must be positive integers; got {raw!r}")
+        if k not in normalized:
+            normalized.append(k)
+    return normalized or [10]
+
+
+def _metrics_by_k(search_outputs: Sequence[SearchOutput], expected_item_ids: Dict[str, List[str]], *, top_k_values: Sequence[int]) -> Dict[str, Dict[str, Any]]:
+    return {str(k): _compute_retrieval_metrics(search_outputs, expected_item_ids, k=int(k)) for k in top_k_values}
+
+
+def _summarize_cost_latency(cost_latency: Dict[str, Any], *, backend_wall_ms: float) -> Dict[str, Any]:
+    search_ms = [float(v) for v in cost_latency.get("search_ms", []) if v is not None]
+    return {
+        "ingest_ms": cost_latency.get("ingest_ms"),
+        "search_count": len(search_ms),
+        "search_ms_total": sum(search_ms) if search_ms else 0.0,
+        "search_ms_avg": (sum(search_ms) / float(len(search_ms))) if search_ms else None,
+        "search_ms_max": max(search_ms) if search_ms else None,
+        "backend_wall_ms": float(backend_wall_ms),
+        "notes": dict(cost_latency.get("notes", {})),
+    }
+
+
+def _aggregate_backend_summaries(backend_results: Sequence[BackendResult], *, timeout_seconds: int) -> Dict[str, Any]:
+    status_counts: Dict[str, int] = {}
+    cost_latency_by_backend: Dict[str, Any] = {}
+    timeout_failures: List[str] = []
+
+    for result in backend_results:
+        status_counts[result.status] = status_counts.get(result.status, 0) + 1
+        cost_latency_by_backend[result.backend_name] = result.cost_latency.get("summary", {}) if result.cost_latency else {}
+        reason = result.status_reason or ""
+        if "timeout" in reason.lower() or "timed out" in reason.lower() or "TimeoutError" in reason:
+            timeout_failures.append(result.backend_name)
+
+    return {
+        "backends": [r.backend_name for r in backend_results],
+        "backend_status_counts": status_counts,
+        "cost_latency_summary": cost_latency_by_backend,
+        "timeout_summary": {
+            "timeout_seconds": int(timeout_seconds),
+            "timeout_failures": timeout_failures,
+            "timeout_enforcement": "reported_only",
+        },
+        "note": "Aggregate metrics remain fixture-level and claim-limited in Phase 11.",
     }
 
 
@@ -160,10 +215,12 @@ def run_fixture_benchmark(
     top_k_values: Sequence[int] = (10,),
     include_retrieval_details: bool = True,
     runner_name: str = "run_memory_benchmark.py",
-    runner_version: str = "phase11-p11-3",
+    runner_version: str = "phase11-p11-4a",
     command_argv: Optional[List[str]] = None,
 ) -> BenchmarkReport:
-    fairness = HarnessFairnessConfig(top_k_values=list(top_k_values)).to_dict()
+    normalized_top_k_values = _normalize_top_k_values(top_k_values)
+    max_top_k = max(normalized_top_k_values)
+    fairness = HarnessFairnessConfig(top_k_values=list(normalized_top_k_values)).to_dict()
 
     # Runner metadata must be public-safe.
     runner = {
@@ -233,17 +290,26 @@ def run_fixture_benchmark(
             for conv in fixture.conversations:
                 adapter.ingest_conversation(conv)
 
-            # Search each question once with the first k (P11-1 minimal harness)
-            top_k = int(list(top_k_values)[0]) if top_k_values else 10
+            # Search each question once at the largest requested k, then compute
+            # metrics at every configured cutoff from the same ranked list. This
+            # keeps adapter calls fair while enabling LOCOMO/LongMemEval-style
+            # multi-cutoff reporting.
+            top_k = int(max_top_k)
             for q in fixture.questions:
                 out = adapter.search(query_id=q.question_id, query=q.query, top_k=top_k)
                 search_outputs.append(out)
                 all_items.extend(out.items)
 
+            retrieval_by_k = _metrics_by_k(search_outputs, expected_map, top_k_values=normalized_top_k_values)
             metrics = {
-                "retrieval": _compute_retrieval_metrics(search_outputs, expected_map, k=top_k),
+                "retrieval": retrieval_by_k[str(top_k)],
+                "retrieval_by_k": retrieval_by_k,
             }
             control_audit = _compute_control_audit(all_items)
+            raw_cost_latency = adapter.export_cost_latency_stats()
+            backend_wall_ms = (time.perf_counter() - started_backend) * 1000.0
+            cost_latency = dict(raw_cost_latency)
+            cost_latency["summary"] = _summarize_cost_latency(raw_cost_latency, backend_wall_ms=backend_wall_ms)
 
             backend_result = BackendResult(
                 backend_name=backend_name,
@@ -254,11 +320,12 @@ def run_fixture_benchmark(
                 search={
                     "question_count": len(fixture.questions),
                     "top_k": top_k,
+                    "top_k_values": list(normalized_top_k_values),
                     "latency_ms": [o.latency_ms for o in search_outputs],
                 },
                 metrics=metrics,
                 retrieval_details=adapter.export_retrieval_details() if include_retrieval_details else None,
-                cost_latency=adapter.export_cost_latency_stats(),
+                cost_latency=cost_latency,
                 control_audit=control_audit,
                 errors=[],
             )
@@ -302,11 +369,10 @@ def run_fixture_benchmark(
                 pass
             _ = time.perf_counter() - started_backend
 
-    # Aggregate: minimal cross-backend metric summary
-    report.aggregate_metrics = {
-        "backends": [r.backend_name for r in report.backend_results],
-        "note": "Aggregate metrics are intentionally minimal in P11-2.",
-    }
+    report.aggregate_metrics = _aggregate_backend_summaries(
+        report.backend_results,
+        timeout_seconds=int(fairness["timeout_seconds"]),
+    )
 
     safe_path = _safe_write_path(output_path, repo_root=repo_root)
     report.write_json(safe_path)

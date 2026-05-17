@@ -9,9 +9,25 @@ from shyftr.benchmarks.fixture import resolve_benchmark_fixture
 from shyftr.benchmarks.runner import run_fixture_benchmark
 
 
+def _parse_top_k_values(raw: str) -> list[int]:
+    values: list[int] = []
+    for part in str(raw).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        value = int(part)
+        if value < 1:
+            raise argparse.ArgumentTypeError("--top-k values must be positive integers")
+        if value not in values:
+            values.append(value)
+    if not values:
+        raise argparse.ArgumentTypeError("--top-k must include at least one positive integer")
+    return values
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-3: public-safe LOCOMO-mini fixture)."
+        description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-4a: multi-top-k report readiness)."
     )
     parser.add_argument("--run-id", default="local-dev", help="Run identifier written into the report.")
     parser.add_argument(
@@ -19,7 +35,12 @@ def main() -> int:
         default="artifacts/benchmarks/memory_report.json",
         help="Output report path. Must be under artifacts/, reports/, or tmp/.",
     )
-    parser.add_argument("--top-k", type=int, default=10, help="Top-k value for backend search.")
+    parser.add_argument(
+        "--top-k",
+        type=_parse_top_k_values,
+        default=[10],
+        help="Top-k cutoff or comma-separated cutoffs for backend search, for example 1,3,5.",
+    )
     parser.add_argument(
         "--include-retrieval-details",
         action="store_true",
@@ -84,7 +105,7 @@ def main() -> int:
         run_id=args.run_id,
         output_path=output_path,
         repo_root=repo_root,
-        top_k_values=[args.top_k],
+        top_k_values=list(args.top_k),
         include_retrieval_details=bool(args.include_retrieval_details),
         command_argv=None,
     )

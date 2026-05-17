@@ -71,7 +71,7 @@ Every report must include:
 
 ## Retrieval metrics
 
-Report retrieval quality at fixed top-k values:
+Report retrieval quality at fixed top-k values. For multi-cutoff runs, query each backend once at the largest requested k and compute the smaller cutoffs from that same ranked list:
 
 - recall at k;
 - precision at k;

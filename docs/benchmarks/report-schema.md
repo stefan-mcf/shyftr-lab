@@ -70,7 +70,7 @@ The `dataset` object should include:
 
 The `fairness` object should include:
 
-- `top_k_values`: list of evaluated k values;
+- `top_k_values`: list of evaluated k values. When more than one value is supplied, the runner should call each backend once at the largest requested k and compute all smaller cutoffs from that same ranked list;
 - `timeout_seconds`: per backend operation timeout;
 - `max_retries`: retry count;
 - `cold_run`: whether each backend was reset before ingest;
@@ -112,6 +112,8 @@ Each backend result should include:
 
 Retrieval metrics:
 
+- `retrieval`: compatibility block for the largest evaluated k value;
+- `retrieval_by_k`: object keyed by k string, with one retrieval metric block per evaluated cutoff;
 - `recall_at_k`: relevant returned items divided by relevant expected items;
 - `precision_at_k`: relevant returned items divided by returned items;
 - `mrr`: reciprocal rank of the first relevant returned item;
@@ -128,6 +130,12 @@ Control/audit metrics:
 - `append_only_preservation`: `passed`, `failed`, or `not_supported`;
 - `feedback_visibility`: whether the backend can record whether retrieved material helped;
 - `pack_compactness`: useful returned text tokens divided by total returned text tokens.
+
+Cost and timeout summaries:
+
+- each successful backend should include `cost_latency.summary` with ingest timing, search count, search total/average/max timing, and runner-observed backend wall time;
+- `aggregate_metrics.cost_latency_summary` should mirror those summaries by backend name;
+- `aggregate_metrics.timeout_summary` should report configured timeout seconds and any backend names that failed with timeout-shaped errors. Current Phase 11 timeout status is reported-only unless a later tranche adds hard cancellation.
 
 When a backend cannot expose a metric, use `not_supported` rather than inventing a number.
 
