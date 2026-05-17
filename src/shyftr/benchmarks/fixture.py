@@ -223,15 +223,25 @@ def resolve_benchmark_fixture(
     fixture_name: str = "synthetic-mini",
     fixture_path: Optional[Path] = None,
     allow_private_data: bool = False,
+    fixture_format: str = "shyftr-fixture",
 ) -> BenchmarkFixture:
     """Resolve a fixture selection to a BenchmarkFixture object."""
 
+    fmt = str(fixture_format).strip().lower()
     if fixture_path is not None:
+        if fmt == "locomo-standard":
+            from shyftr.benchmarks.locomo_standard import load_locomo_standard_json
+
+            return load_locomo_standard_json(Path(fixture_path), allow_private_data=allow_private_data)
+        if fmt not in {"shyftr-fixture", "fixture", "auto"}:
+            raise ValueError(f"unknown fixture format: {fixture_format}")
         return load_fixture_json(Path(fixture_path), allow_private_data=allow_private_data)
 
     name = str(fixture_name).strip().lower()
     if name == "synthetic-mini":
         return synthetic_mini_fixture()
+    if name == "locomo-standard":
+        raise ValueError("locomo-standard requires --fixture-path and --fixture-format locomo-standard; no dataset is downloaded by default")
 
     # Builtins stored as checked-in JSON files.
     return load_fixture_json(get_builtin_fixture_path(name), allow_private_data=allow_private_data)

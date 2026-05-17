@@ -5,7 +5,7 @@ Status: Phase 11 harness docs. No benchmark result claim is made by this folder.
 ## P11-1: fixture-safe adapter harness
 
 This repo includes a minimal, fixture-safe harness for exercising the Phase 11 adapter contract.
-It starts with a synthetic fixture, adds a tiny public-safe LOCOMO-mini shaped fixture (P11-3), and now reports retrieval metrics at multiple top-k cutoffs from one fair ranked-list call per question (P11-4a).
+It starts with a synthetic fixture, adds a tiny public-safe LOCOMO-mini shaped fixture (P11-3), reports retrieval metrics at multiple top-k cutoffs from one fair ranked-list call per question (P11-4a), and now includes a download-free LOCOMO-standard mapping layer (P11-4d).
 
 Key constraints:
 
@@ -55,6 +55,12 @@ P11-4c deterministic retry accounting:
 - Retry events are written to each backend's `cost_latency.retry_summary` and aggregated under `aggregate_metrics.retry_summary`.
 - `AdapterSkip` remains a skip, not a retried failure.
 
+P11-4d LOCOMO-standard mapping layer:
+
+- `--fixture locomo-standard` is allowed only with an explicit local `--fixture-path`.
+- `--fixture-format locomo-standard` maps a normalized local LOCOMO-style JSON file into the Phase 11 fixture contract.
+- No dataset is downloaded by the runner, and full LOCOMO claims remain disallowed.
+
 Output write safety:
 
 The runner refuses to write reports outside of:
@@ -89,8 +95,9 @@ PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
 
 - `synthetic-mini` (P11-1): deterministic in-code fixture, contract validation only.
 - `locomo-mini` (P11-3): tiny checked-in JSON fixture with a LOCOMO-like shape, public-safe.
+- `locomo-standard` (P11-4d): download-free mapping layer for explicit local normalized LOCOMO-style JSON files.
 
-Planned (not included / not downloaded by default): full LOCOMO, LongMemEval, BEAM.
+Planned (not included / not downloaded by default): full LOCOMO execution, LongMemEval, BEAM.
 
 Claim limitations:
 

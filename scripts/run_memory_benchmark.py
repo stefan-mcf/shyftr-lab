@@ -50,13 +50,19 @@ def main() -> int:
     parser.add_argument(
         "--fixture",
         default="synthetic-mini",
-        choices=["synthetic-mini", "locomo-mini"],
+        choices=["synthetic-mini", "locomo-mini", "locomo-standard"],
         help="Fixture selector (default: synthetic-mini).",
     )
     parser.add_argument(
         "--fixture-path",
         default=None,
         help="Explicit fixture JSON path (overrides --fixture). Fixtures marked contains_private_data=true are rejected by default.",
+    )
+    parser.add_argument(
+        "--fixture-format",
+        default="shyftr-fixture",
+        choices=["shyftr-fixture", "locomo-standard"],
+        help="Format for --fixture-path. locomo-standard maps a local normalized LOCOMO-style JSON file without downloading data.",
     )
     parser.add_argument(
         "--allow-private-fixture",
@@ -97,6 +103,7 @@ def main() -> int:
         fixture_name=args.fixture,
         fixture_path=Path(args.fixture_path) if args.fixture_path else None,
         allow_private_data=bool(args.allow_private_fixture),
+        fixture_format=str(args.fixture_format),
     )
 
     # Cell root is always under repo tmp/ for fixture-safe runs.

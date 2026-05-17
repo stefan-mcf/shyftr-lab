@@ -208,6 +208,17 @@ After timeout/resume controls, make retry behavior executable and auditable:
 
 This tranche still uses only fixture-safe datasets and does not download LOCOMO, LongMemEval, or BEAM.
 
+### P11-4d: LOCOMO-standard mapping layer
+
+After retry accounting, add the first standard-dataset mapping layer without downloading data:
+
+- explicit `locomo-standard` fixture selection requires a local path;
+- `--fixture-format locomo-standard` maps normalized LOCOMO-style JSON into the fixture contract;
+- native input defaults to private unless `contains_private_data: false` is declared;
+- docs and tests prove mapping shape only, not full benchmark results.
+
+This tranche does not download LOCOMO, LongMemEval, or BEAM and does not support broad performance claims.
+
 ### P11-4: Larger benchmark expansion
 
 Deliverables:
