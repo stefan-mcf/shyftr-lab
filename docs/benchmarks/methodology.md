@@ -118,6 +118,7 @@ A benchmark run must keep these fixed across comparable backends:
 - answerer model;
 - judge model;
 - timeout and retry policy;
+- resume policy for interrupted or repeated runs;
 - token accounting method;
 - cold or warm run mode.
 

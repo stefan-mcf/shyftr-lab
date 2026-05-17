@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 import math
-import os
 import platform
+import signal
 import sys
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
 
 from shyftr.benchmarks.adapters.base import AdapterSkip, BackendAdapter
 from shyftr.benchmarks.fixture import BenchmarkFixture
@@ -63,6 +66,76 @@ def _is_relative_to(path: Path, root: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+class BenchmarkOperationTimeout(TimeoutError):
+    """Raised when a benchmark adapter operation exceeds the configured budget."""
+
+
+@contextmanager
+def _operation_timeout(seconds: int):
+    if seconds <= 0 or not hasattr(signal, "SIGALRM") or threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    previous_timer = signal.setitimer(signal.ITIMER_REAL, 0)
+
+    def _raise_timeout(_signum: int, _frame: Any) -> None:
+        raise BenchmarkOperationTimeout(f"benchmark operation timed out after {seconds} seconds")
+
+    signal.signal(signal.SIGALRM, _raise_timeout)
+    signal.setitimer(signal.ITIMER_REAL, float(seconds))
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_timer and previous_timer[0] > 0:
+            signal.setitimer(signal.ITIMER_REAL, previous_timer[0], previous_timer[1])
+
+
+def _run_with_timeout(fn: Callable[[], Any], *, timeout_seconds: int) -> Any:
+    with _operation_timeout(int(timeout_seconds)):
+        return fn()
+
+
+def _backend_result_from_dict(payload: Dict[str, Any]) -> BackendResult:
+    return BackendResult(
+        backend_name=str(payload.get("backend_name", "unknown")),
+        status=str(payload.get("status", "failed")),
+        status_reason=payload.get("status_reason"),
+        config_summary=dict(payload.get("config_summary", {})),
+        ingest=dict(payload.get("ingest", {})),
+        search=dict(payload.get("search", {})),
+        metrics=dict(payload.get("metrics", {})),
+        retrieval_details=payload.get("retrieval_details"),
+        cost_latency=dict(payload.get("cost_latency", {})),
+        control_audit=dict(payload.get("control_audit", {})),
+        errors=list(payload.get("errors", [])),
+    )
+
+
+def _load_resumable_backend_results(output_path: Path, *, run_id: str, fixture: BenchmarkFixture) -> Dict[str, BackendResult]:
+    if not output_path.exists():
+        return {}
+    try:
+        payload = json.loads(output_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+    dataset = dict(payload.get("dataset", {}))
+    if payload.get("run_id") != run_id:
+        return {}
+    if dataset.get("name") != fixture.dataset_name or dataset.get("version") != fixture.dataset_version or dataset.get("split") != fixture.fixture_id:
+        return {}
+
+    resumable: Dict[str, BackendResult] = {}
+    for raw in payload.get("backend_results", []):
+        result = _backend_result_from_dict(dict(raw))
+        if result.status in {"ok", "skipped"}:
+            resumable[result.backend_name] = result
+    return resumable
 
 
 def _token_estimate(text: str) -> int:
@@ -146,7 +219,7 @@ def _summarize_cost_latency(cost_latency: Dict[str, Any], *, backend_wall_ms: fl
     }
 
 
-def _aggregate_backend_summaries(backend_results: Sequence[BackendResult], *, timeout_seconds: int) -> Dict[str, Any]:
+def _aggregate_backend_summaries(backend_results: Sequence[BackendResult], *, timeout_seconds: int, resumed_backends: Optional[Sequence[str]] = None) -> Dict[str, Any]:
     status_counts: Dict[str, int] = {}
     cost_latency_by_backend: Dict[str, Any] = {}
     timeout_failures: List[str] = []
@@ -165,7 +238,11 @@ def _aggregate_backend_summaries(backend_results: Sequence[BackendResult], *, ti
         "timeout_summary": {
             "timeout_seconds": int(timeout_seconds),
             "timeout_failures": timeout_failures,
-            "timeout_enforcement": "reported_only",
+            "timeout_enforcement": "hard_signal_alarm" if hasattr(signal, "SIGALRM") else "not_available",
+        },
+        "resume_summary": {
+            "resumed_backend_count": len(list(resumed_backends or [])),
+            "resumed_backends": list(resumed_backends or []),
         },
         "note": "Aggregate metrics remain fixture-level and claim-limited in Phase 11.",
     }
@@ -215,12 +292,19 @@ def run_fixture_benchmark(
     top_k_values: Sequence[int] = (10,),
     include_retrieval_details: bool = True,
     runner_name: str = "run_memory_benchmark.py",
-    runner_version: str = "phase11-p11-4a",
+    runner_version: str = "phase11-p11-4b",
     command_argv: Optional[List[str]] = None,
+    timeout_seconds: int = 60,
+    max_retries: int = 0,
+    resume_existing: bool = False,
 ) -> BenchmarkReport:
     normalized_top_k_values = _normalize_top_k_values(top_k_values)
     max_top_k = max(normalized_top_k_values)
-    fairness = HarnessFairnessConfig(top_k_values=list(normalized_top_k_values)).to_dict()
+    fairness = HarnessFairnessConfig(
+        top_k_values=list(normalized_top_k_values),
+        timeout_seconds=int(timeout_seconds),
+        max_retries=int(max_retries),
+    ).to_dict()
 
     # Runner metadata must be public-safe.
     runner = {
@@ -274,6 +358,10 @@ def run_fixture_benchmark(
         ],
     )
 
+    safe_path = _safe_write_path(output_path, repo_root=repo_root)
+    resumable_results = _load_resumable_backend_results(safe_path, run_id=run_id, fixture=fixture) if resume_existing else {}
+    resumed_backend_names: List[str] = []
+
     expected_map: Dict[str, List[str]] = {}
     for q in fixture.questions:
         if q.expected_item_ids:
@@ -281,14 +369,19 @@ def run_fixture_benchmark(
 
     for adapter in adapters:
         backend_name = getattr(adapter, "backend_name", type(adapter).__name__)
+        if backend_name in resumable_results:
+            report.backend_results.append(resumable_results[backend_name])
+            resumed_backend_names.append(backend_name)
+            continue
+
         started_backend = time.perf_counter()
         search_outputs: List[SearchOutput] = []
         all_items: List[RetrievalItem] = []
         try:
-            adapter.reset_run(run_id)
+            _run_with_timeout(lambda: adapter.reset_run(run_id), timeout_seconds=int(timeout_seconds))
 
             for conv in fixture.conversations:
-                adapter.ingest_conversation(conv)
+                _run_with_timeout(lambda conv=conv: adapter.ingest_conversation(conv), timeout_seconds=int(timeout_seconds))
 
             # Search each question once at the largest requested k, then compute
             # metrics at every configured cutoff from the same ranked list. This
@@ -296,7 +389,10 @@ def run_fixture_benchmark(
             # multi-cutoff reporting.
             top_k = int(max_top_k)
             for q in fixture.questions:
-                out = adapter.search(query_id=q.question_id, query=q.query, top_k=top_k)
+                out = _run_with_timeout(
+                    lambda q=q: adapter.search(query_id=q.question_id, query=q.query, top_k=top_k),
+                    timeout_seconds=int(timeout_seconds),
+                )
                 search_outputs.append(out)
                 all_items.extend(out.items)
 
@@ -372,9 +468,9 @@ def run_fixture_benchmark(
     report.aggregate_metrics = _aggregate_backend_summaries(
         report.backend_results,
         timeout_seconds=int(fairness["timeout_seconds"]),
+        resumed_backends=resumed_backend_names,
     )
 
-    safe_path = _safe_write_path(output_path, repo_root=repo_root)
     report.write_json(safe_path)
     return report
 

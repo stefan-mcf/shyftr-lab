@@ -41,7 +41,13 @@ P11-4a multi-cutoff readiness:
 
 - `--top-k` accepts a single integer or comma-separated cutoffs such as `1,3,10`.
 - The runner queries each backend once at the maximum requested k, then computes `metrics.retrieval_by_k` for every configured cutoff.
-- Reports include `cost_latency.summary` per successful backend and an aggregate timeout summary. Timeout enforcement remains reported-only until a later larger-run tranche adds hard cancellation.
+- Reports include `cost_latency.summary` per successful backend and an aggregate timeout summary. Hard timeout enforcement uses SIGALRM where available; environments without SIGALRM report timeout enforcement as unavailable.
+
+P11-4b timeout and resume readiness:
+
+- `--timeout-seconds` sets a per adapter operation timeout. The runner uses SIGALRM where available and reports timeout-shaped failures in `aggregate_metrics.timeout_summary`.
+- `--resume-existing` reuses `ok` and `skipped` backend results from an existing report with the same run id and fixture identity, so larger local runs can resume without rerunning completed backends.
+- `--max-retries` is recorded in fairness metadata; actual retry execution remains reserved for a later tranche after timeout and resume behavior is stable.
 
 Output write safety:
 

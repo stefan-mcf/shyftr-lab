@@ -186,6 +186,17 @@ Before larger dataset adapters, land the report mechanics needed by those runs:
 
 This tranche still uses only fixture-safe datasets and does not download LOCOMO, LongMemEval, or BEAM.
 
+### P11-4b: Timeout and resume readiness
+
+Before adding larger standard-dataset adapters, prove local run controls:
+
+- per adapter operation timeout configured through the CLI and report fairness block;
+- timeout-shaped failures are reported per backend and aggregated;
+- existing matching reports can be resumed by reusing completed `ok` or `skipped` backend results;
+- retry policy is disclosed but not executed until timeout/resume behavior is stable.
+
+This tranche still uses only fixture-safe datasets and does not download LOCOMO, LongMemEval, or BEAM.
+
 ### P11-4: Larger benchmark expansion
 
 Deliverables:

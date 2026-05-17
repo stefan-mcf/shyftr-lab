@@ -27,7 +27,7 @@ def _parse_top_k_values(raw: str) -> list[int]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-4a: multi-top-k report readiness)."
+        description="Run ShyftR Phase 11 fixture-safe memory benchmark harness (P11-4b: timeout and resume readiness)."
     )
     parser.add_argument("--run-id", default="local-dev", help="Run identifier written into the report.")
     parser.add_argument(
@@ -62,6 +62,24 @@ def main() -> int:
         "--allow-private-fixture",
         action="store_true",
         help="Allow loading fixtures with contains_private_data=true (local, non-public runs only).",
+    )
+
+    parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=60,
+        help="Per adapter operation timeout in seconds. Uses SIGALRM where available.",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=0,
+        help="Retry count recorded in fairness metadata; retries are reserved for a later tranche.",
+    )
+    parser.add_argument(
+        "--resume-existing",
+        action="store_true",
+        help="Reuse ok/skipped backend results from an existing matching report at --output.",
     )
 
     parser.add_argument(
@@ -108,6 +126,9 @@ def main() -> int:
         top_k_values=list(args.top_k),
         include_retrieval_details=bool(args.include_retrieval_details),
         command_argv=None,
+        timeout_seconds=int(args.timeout_seconds),
+        max_retries=int(args.max_retries),
+        resume_existing=bool(args.resume_existing),
     )
 
     return 0
