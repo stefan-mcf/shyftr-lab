@@ -46,7 +46,7 @@ PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
   --output tmp/private_report.json
 ```
 
-## Expected outcomes (minimal)
+## Expected results (minimal)
 
 - `no-memory` backend status: `ok`, with retrieval recall at k expected to be 0.0 on this fixture.
 - `shyftr` backend status: `ok`, with retrieval recall at k expected to be > 0.0.
