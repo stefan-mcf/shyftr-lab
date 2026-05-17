@@ -1,0 +1,96 @@
+{
+  "schema_version": "shyftr-memory-benchmark-fixture/v0",
+  "fixture_id": "locomo-mini-001",
+  "dataset_name": "locomo-mini",
+  "dataset_version": "v0",
+  "contains_private_data": false,
+  "conversations": [
+    {
+      "conversation_id": "lc-001",
+      "session_id": "day-1",
+      "started_at": "2026-02-01T09:00:00Z",
+      "messages": [
+        {
+          "message_id": "lc1-m001",
+          "role": "user",
+          "content": "I started a tiny herb garden on my balcony. The basil is my favorite so far.",
+          "created_at": "2026-02-01T09:00:10Z",
+          "metadata": {"domain": "hobby"}
+        },
+        {
+          "message_id": "lc1-m002",
+          "role": "assistant",
+          "content": "Nice. Basil is a great starter herb.",
+          "created_at": "2026-02-01T09:00:20Z",
+          "metadata": {"domain": "hobby"}
+        },
+        {
+          "message_id": "lc1-m003",
+          "role": "user",
+          "content": "Reminder for later: the watering schedule is every Monday and Thursday.",
+          "created_at": "2026-02-01T09:00:40Z",
+          "metadata": {"domain": "planning"}
+        }
+      ],
+      "metadata": {"topic": "garden"}
+    },
+    {
+      "conversation_id": "lc-002",
+      "session_id": "day-2",
+      "started_at": "2026-02-02T18:30:00Z",
+      "messages": [
+        {
+          "message_id": "lc2-m001",
+          "role": "user",
+          "content": "For the demo tomorrow, the passphrase is ORIGAMI-PINE. (It is not a real password.)",
+          "created_at": "2026-02-02T18:30:10Z",
+          "metadata": {"domain": "demo"}
+        },
+        {
+          "message_id": "lc2-m002",
+          "role": "assistant",
+          "content": "Got it. I will treat that as a demo-only phrase.",
+          "created_at": "2026-02-02T18:30:20Z",
+          "metadata": {"domain": "demo"}
+        },
+        {
+          "message_id": "lc2-m003",
+          "role": "user",
+          "content": "Also, my laptop sticker says \"ASK ME ABOUT VECTORS\" in all caps.",
+          "created_at": "2026-02-02T18:30:40Z",
+          "metadata": {"domain": "misc"}
+        }
+      ],
+      "metadata": {"topic": "demo"}
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "lc-q001",
+      "query": "What herb did I say is my favorite?",
+      "expected_answer": "basil",
+      "expected_item_ids": ["lc1-m001"],
+      "question_type": "factual",
+      "temporal_hint": "day-1",
+      "evaluation_notes": "Public-safe preference recall."
+    },
+    {
+      "question_id": "lc-q002",
+      "query": "What is the watering schedule I mentioned?",
+      "expected_answer": "every Monday and Thursday",
+      "expected_item_ids": ["lc1-m003"],
+      "question_type": "factual",
+      "temporal_hint": "day-1",
+      "evaluation_notes": "Schedule recall with explicit phrasing."
+    },
+    {
+      "question_id": "lc-q003",
+      "query": "In day-2, what demo passphrase did I mention?",
+      "expected_answer": "ORIGAMI-PINE",
+      "expected_item_ids": ["lc2-m001"],
+      "question_type": "temporal",
+      "temporal_hint": "day-2",
+      "evaluation_notes": "The fixture explicitly states it is not a real password."
+    }
+  ]
+}

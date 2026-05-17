@@ -4,7 +4,8 @@ Status: Phase 11 harness docs. No benchmark result claim is made by this folder.
 
 ## P11-1: fixture-safe adapter harness
 
-This repo includes a minimal, synthetic, fixture-safe harness for exercising the Phase 11 adapter contract.
+This repo includes a minimal, fixture-safe harness for exercising the Phase 11 adapter contract.
+It starts with a synthetic fixture and adds a tiny public-safe LOCOMO-mini shaped fixture (P11-3).
 
 Key constraints:
 
@@ -24,6 +25,16 @@ PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
   --output artifacts/benchmarks/memory_report.json \
   --top-k 10 \
   --include-retrieval-details
+```
+
+P11-3 LOCOMO-mini fixture (public-safe, tiny, checked-in JSON; NOT the full LOCOMO dataset):
+
+```bash
+PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
+  --fixture locomo-mini \
+  --run-id locomo-mini-dev \
+  --output artifacts/benchmarks/locomo_mini_report.json \
+  --top-k 10
 ```
 
 Output write safety:
@@ -55,3 +66,15 @@ PYTHONPATH=.:src python scripts/run_memory_benchmark.py \
   --top-k 10 \
   --include-mem0-oss
 ```
+
+## Dataset status / order
+
+- `synthetic-mini` (P11-1): deterministic in-code fixture, contract validation only.
+- `locomo-mini` (P11-3): tiny checked-in JSON fixture with a LOCOMO-like shape, public-safe.
+
+Planned (not included / not downloaded by default): full LOCOMO, LongMemEval, BEAM.
+
+Claim limitations:
+
+- These fixtures are not a task-success benchmark.
+- Do not use fixture runs for broad benchmark or superiority claims.

@@ -160,7 +160,7 @@ def run_fixture_benchmark(
     top_k_values: Sequence[int] = (10,),
     include_retrieval_details: bool = True,
     runner_name: str = "run_memory_benchmark.py",
-    runner_version: str = "phase11-p11-2",
+    runner_version: str = "phase11-p11-3",
     command_argv: Optional[List[str]] = None,
 ) -> BenchmarkReport:
     fairness = HarnessFairnessConfig(top_k_values=list(top_k_values)).to_dict()
@@ -204,14 +204,15 @@ def run_fixture_benchmark(
         fairness=fairness,
         models=models,
         limitations=[
-            "P11-2 synthetic fixture only; not a task-success benchmark.",
-            "Answerer/judge are disabled in P11-2; only retrieval and adapter-status contracts are exercised.",
+            "Phase 11 fixtures are tiny and public-safe; not a full LOCOMO/LongMemEval/BEAM run.",
+            "Answerer/judge are disabled in Phase 11; only retrieval and adapter-status contracts are exercised.",
+            "No broad performance or task-success claims are supported by these fixture runs.",
         ],
         claims_allowed=[
             "This report records a fixture-safe retrieval run under a pinned harness configuration.",
         ],
         claims_not_allowed=[
-            "No broad performance or superiority claims are supported by this synthetic fixture run.",
+            "No broad performance or superiority claims are supported by this fixture-level run.",
             "No hosted or production claims are supported.",
         ],
     )

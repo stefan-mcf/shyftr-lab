@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from .types import BenchmarkConversation, BenchmarkMessage, BenchmarkQuestion
 
@@ -113,14 +115,50 @@ class BenchmarkFixture:
         )
 
 
+def load_fixture_json(
+    fixture_path: Path,
+    *,
+    allow_private_data: bool = False,
+    require_public_safe: bool = True,
+) -> BenchmarkFixture:
+    """Load a fixture JSON file.
+
+    Safety contract:
+    - By default, fixtures marked contains_private_data=true are rejected.
+    - Callers can override with allow_private_data=true for local private experiments.
+
+    This is intentionally a minimal loader for Phase 11.
+    """
+
+    path = Path(fixture_path).expanduser().resolve()
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    fixture = BenchmarkFixture.from_dict(payload)
+
+    if require_public_safe and bool(fixture.contains_private_data) and not bool(allow_private_data):
+        raise ValueError(
+            f"Refusing to load fixture marked contains_private_data=true: {path} "
+            "(pass allow_private_data=true only for local, non-public runs)"
+        )
+
+    return fixture
+
+
+def get_builtin_fixture_path(fixture_name: str) -> Path:
+    name = str(fixture_name).strip().lower()
+    repo_root = Path(__file__).resolve().parents[3]
+
+    if name == "locomo-mini":
+        return repo_root / "fixtures" / "benchmarks" / "locomo-mini.fixture.json"
+
+    raise ValueError(f"unknown builtin fixture: {fixture_name}")
+
+
 def synthetic_mini_fixture() -> BenchmarkFixture:
     """Return a deterministic, public-safe synthetic fixture.
 
     This fixture is tiny by design. It is only meant to validate the adapter and
     report contract (P11-1) and should not be used for broad benchmark claims.
     """
-
-    from .types import BenchmarkMessage
 
     conv1 = BenchmarkConversation(
         conversation_id="conv-001",
@@ -180,4 +218,30 @@ def synthetic_mini_fixture() -> BenchmarkFixture:
     )
 
 
-__all__ = ["BenchmarkFixture", "FIXTURE_SCHEMA_VERSION", "synthetic_mini_fixture"]
+def resolve_benchmark_fixture(
+    *,
+    fixture_name: str = "synthetic-mini",
+    fixture_path: Optional[Path] = None,
+    allow_private_data: bool = False,
+) -> BenchmarkFixture:
+    """Resolve a fixture selection to a BenchmarkFixture object."""
+
+    if fixture_path is not None:
+        return load_fixture_json(Path(fixture_path), allow_private_data=allow_private_data)
+
+    name = str(fixture_name).strip().lower()
+    if name == "synthetic-mini":
+        return synthetic_mini_fixture()
+
+    # Builtins stored as checked-in JSON files.
+    return load_fixture_json(get_builtin_fixture_path(name), allow_private_data=allow_private_data)
+
+
+__all__ = [
+    "BenchmarkFixture",
+    "FIXTURE_SCHEMA_VERSION",
+    "synthetic_mini_fixture",
+    "load_fixture_json",
+    "resolve_benchmark_fixture",
+    "get_builtin_fixture_path",
+]
